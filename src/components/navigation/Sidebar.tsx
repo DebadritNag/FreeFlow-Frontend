@@ -20,7 +20,10 @@ export default function Sidebar() {
   const { metrics, activeAgent } = useAppSelector((state) => state.tickets);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isReviewActive = pathname.startsWith('/review');
+  // A ticket detail route (/tickets/{id}) maps to "Support Operations" active to
+  // match the reference. The tickets list (/tickets exactly) stays "Dashboard".
+  const isTicketDetail = /^\/tickets\/[^/]+/.test(pathname);
+  const isReviewActive = pathname.startsWith('/review') || isTicketDetail;
   const isDashboardActive =
     !isReviewActive && (pathname.startsWith('/tickets') || pathname === '/');
   const ticketsBadge = metrics ? metrics.totalTickets : '';
