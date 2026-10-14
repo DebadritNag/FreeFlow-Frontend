@@ -38,6 +38,17 @@ export interface TicketAttachment {
   isSafe: boolean;
 }
 
+/**
+ * Records a single invalid/unknown field value that was coerced to a safe
+ * fallback for math/sorting while the raw value is preserved for display.
+ * See DECISION D1 (safe-fallback + preserved raw + visible badge).
+ */
+export interface TicketAnomaly {
+  field: string;
+  rawValue: string;
+  message: string;
+}
+
 export interface Ticket {
   id: string;
   subject: string;
@@ -58,6 +69,18 @@ export interface Ticket {
   slaDeadline: string;
   attachments?: TicketAttachment[];
   version: number;
+  // External/source identity + AI-provided fields (cross-cutting, FEAT-001)
+  externalId: string;
+  summary: string | null;
+  aiPriority: Priority | null;
+  reviewReason: string | null;
+  // Preserved raw values for invalid/unknown enums (safe-fallback, DECISION D1)
+  rawPriority?: string;
+  rawStatus?: string;
+  rawCategory?: string;
+  rawTier?: string;
+  rawTriageDecision?: string;
+  anomalies: TicketAnomaly[];
 }
 
 export interface TicketMetrics {

@@ -9,31 +9,24 @@ import {
 export const DEFAULT_AGENTS: Agent[] = [
   {
     id: 'agent-1',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@freeflow.ventures',
+    name: 'Priya',
+    email: 'priya@freeflow.ventures',
     role: 'Senior Support Specialist',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces',
   },
   {
     id: 'agent-2',
-    name: 'Marcus Vance',
-    email: 'marcus.vance@freeflow.ventures',
+    name: 'Rahul',
+    email: 'rahul@freeflow.ventures',
     role: 'Enterprise Operations Lead',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces',
   },
   {
     id: 'agent-3',
-    name: 'Elena Rostova',
-    email: 'elena.rostova@freeflow.ventures',
+    name: 'Meera',
+    email: 'meera@freeflow.ventures',
     role: 'Technical Support Engineer',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
-  },
-  {
-    id: 'agent-4',
-    name: 'David Kalu',
-    email: 'david.kalu@freeflow.ventures',
-    role: 'Product Escalation Specialist',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=faces',
   },
 ];
 
