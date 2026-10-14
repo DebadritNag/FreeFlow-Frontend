@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agents and ai tooling
+.agents/
+.kiro/
+.qoder/
+AGENTS.md
+DECISIONS.md
+Skills-lock.json
+skills-lock.json
+
+# tests
+tests/

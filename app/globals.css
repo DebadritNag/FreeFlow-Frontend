@@ -1,26 +1,200 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-amber-surface: var(--amber-surface);
+  --color-amber-border: var(--amber-border);
+  --color-surface-green: var(--surface-green);
+  --color-surface-green-hover: var(--surface-green-hover);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-ref: var(--border-ref);
+  --color-breached: var(--breached);
+  --color-surface-search: var(--surface-search);
+  --radius-sm: calc(var(--radius) * 0.7);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Freeflow Support Desk Warm Palette */
+  --background: #F7F6F2;
+  --foreground: #202522;
+  
+  --card: #FFFFFF;
+  --card-foreground: #202522;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #202522;
+  
+  /* Primary Action: Forest Green */
+  --primary: #246B4B;
+  --primary-foreground: #FFFFFF;
+  
+  /* Secondary: Soft ivory stone */
+  --secondary: #EFECE6;
+  --secondary-foreground: #202522;
+  
+  /* Muted elements */
+  --muted: #EFECE6;
+  --muted-foreground: #636D66;
+  
+  /* Accent: subtle sage forest tint */
+  --accent: #E5EDE8;
+  --accent-foreground: #185238;
+  
+  /* Destructive & Warning */
+  --destructive: #BD2727;
+  --destructive-foreground: #FFFFFF;
+  
+  --warning: #D97736;
+  --warning-foreground: #FFFFFF;
+  
+  /* Borders and Controls */
+  --border: #E5E2DA;
+  --input: #E5E2DA;
+  --ring: #246B4B;
+  
+  --radius: 0.5rem;
+  
+  --sidebar: #FAF9F6;
+  --sidebar-foreground: #202522;
+  --sidebar-primary: #246B4B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EFECE6;
+  --sidebar-accent-foreground: #202522;
+  --sidebar-border: #E5E2DA;
+  --sidebar-ring: #246B4B;
+
+  /* Reference dashboard tokens (added for dashboard rebuild) */
+  --amber-surface: #FFF1E5;
+  --amber-border: #F5D1B6;
+  --surface-green: #EAF2EC;
+  --surface-green-hover: #DDEAE1;
+  --text-secondary: #68736D;
+  --border-ref: #E6E5DF;
+  --breached: #C83F36;
+  --surface-search: #FAF9F6;
+  --shadow-card: 0 2px 8px rgba(32, 37, 34, 0.035);
+}
+
+.dark {
+  --background: #151816;
+  --foreground: #EDEDE8;
+  
+  --card: #1C201E;
+  --card-foreground: #EDEDE8;
+  
+  --popover: #1C201E;
+  --popover-foreground: #EDEDE8;
+  
+  --primary: #2FA372;
+  --primary-foreground: #0E291C;
+  
+  --secondary: #272C29;
+  --secondary-foreground: #EDEDE8;
+  
+  --muted: #272C29;
+  --muted-foreground: #9CA39E;
+  
+  --accent: #23352B;
+  --accent-foreground: #48D296;
+  
+  --destructive: #E04848;
+  --destructive-foreground: #FFFFFF;
+  
+  --warning: #E68A4C;
+  --warning-foreground: #FFFFFF;
+  
+  --border: #2D3330;
+  --input: #2D3330;
+  --ring: #2FA372;
+  
+  --sidebar: #191D1A;
+  --sidebar-foreground: #EDEDE8;
+  --sidebar-primary: #2FA372;
+  --sidebar-primary-foreground: #0E291C;
+  --sidebar-accent: #272C29;
+  --sidebar-accent-foreground: #EDEDE8;
+  --sidebar-border: #2D3330;
+  --sidebar-ring: #2FA372;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom UI Polish inspired by emil-design-eng & break-ui */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reusable soft card shadow for dashboard surfaces */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Snappy press feedback */
+button:active:not(:disabled),
+a[role="button"]:active {
+  transform: scale(0.97);
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }
