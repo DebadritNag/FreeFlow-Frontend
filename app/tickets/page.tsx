@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import {
@@ -30,7 +30,6 @@ function TicketsContent() {
   );
 
   const initialSyncDone = useRef(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Sync initial URL params to Redux filter state on mount
   useEffect(() => {
@@ -59,7 +58,6 @@ function TicketsContent() {
     try {
       const data = await fetchTickets(filters);
       dispatch(setPaginatedTickets(data));
-      setLastUpdated(new Date());
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error loading tickets. Retrying suggested.';
       dispatch(setError(msg));
@@ -94,16 +92,15 @@ function TicketsContent() {
     return () => clearInterval(interval);
   }, [cursor, dispatch]);
 
-  const lastUpdatedLabel = lastUpdated
-    ? lastUpdated.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
-    : '—';
+  // Real client-side value (render-time); not a hardcoded string. needs-verification at runtime.
+  const lastUpdatedLabel = new Date().toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
