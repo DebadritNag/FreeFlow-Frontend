@@ -20,13 +20,17 @@ export default function Sidebar() {
   const { metrics, activeAgent } = useAppSelector((state) => state.tickets);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isDashboardActive = pathname.startsWith('/tickets') || pathname === '/';
+  const isReviewActive = pathname.startsWith('/review');
+  const isDashboardActive =
+    !isReviewActive && (pathname.startsWith('/tickets') || pathname === '/');
   const ticketsBadge = metrics ? metrics.totalTickets : '';
 
+  const activeItemClass =
+    'relative flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-semibold bg-surface-green text-[#246B4B] transition-colors duration-200 cursor-pointer';
   const inactiveItemClass =
-    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 cursor-pointer';
+    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-surface-green transition-colors duration-200 cursor-pointer';
   const inertItemClass =
-    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 w-full text-left cursor-pointer';
+    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-surface-green transition-colors duration-200 w-full text-left cursor-pointer';
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -48,15 +52,11 @@ export default function Sidebar() {
       {/* Scrollable nav + lower content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col">
         <nav className="flex flex-col gap-3">
-          {/* Dashboard - active route */}
+          {/* Dashboard - active on /tickets and / */}
           <Link
             href="/tickets"
             onClick={closeMobile}
-            className={
-              isDashboardActive
-                ? 'relative flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-semibold bg-surface-green text-[#246B4B] transition-colors duration-200 cursor-pointer'
-                : inactiveItemClass
-            }
+            className={isDashboardActive ? activeItemClass : inactiveItemClass}
             aria-current={isDashboardActive ? 'page' : undefined}
           >
             {isDashboardActive && (
@@ -72,16 +72,26 @@ export default function Sidebar() {
           <button type="button" aria-disabled="true" className={inertItemClass}>
             <Ticket className="w-[18px] h-[18px]" />
             <span className="flex-1">Tickets</span>
-            <span className="ml-auto min-w-[26px] px-2 py-0.5 rounded-full text-[12px] font-semibold text-text-secondary bg-secondary text-center tabular-nums">
+            <span className="ml-auto min-w-[26px] px-2 py-0.5 rounded-full text-[12px] font-semibold text-[#246B4B] bg-surface-green text-center tabular-nums">
               {ticketsBadge}
             </span>
           </button>
 
-          {/* Support Operations - inert, no route */}
-          <button type="button" aria-disabled="true" className={inertItemClass}>
-            <Headset className="w-[18px] h-[18px]" />
+          {/* Support Operations - active on /review */}
+          <Link
+            href="/review"
+            onClick={closeMobile}
+            className={isReviewActive ? activeItemClass : inactiveItemClass}
+            aria-current={isReviewActive ? 'page' : undefined}
+          >
+            {isReviewActive && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[#246B4B]" />
+            )}
+            <Headset
+              className={`w-[18px] h-[18px] ${isReviewActive ? 'text-[#246B4B]' : ''}`}
+            />
             <span>Support Operations</span>
-          </button>
+          </Link>
 
           {/* Reports - inert, no route */}
           <button type="button" aria-disabled="true" className={inertItemClass}>
