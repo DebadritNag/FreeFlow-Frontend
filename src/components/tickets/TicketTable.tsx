@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
@@ -26,7 +26,7 @@ import {
   Inbox,
   RefreshCw,
   ShieldAlert,
-  UserPlus,
+  UserRoundPlus,
 } from 'lucide-react';
 import { ApiError } from '@/src/lib/api-client';
 
@@ -40,6 +40,39 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
   const { items, loading, error, activeAgent } = useAppSelector(
     (state) => state.tickets
   );
+
+  // Net-new LOCAL selection state (no Redux reducers for selection).
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const allSelected = items.length > 0 && selectedIds.size === items.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const stop = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleToggleAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((t) => t.id)));
+    }
+  };
+
+  const handleToggleRow = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const handleClaim = async (e: React.MouseEvent, ticket: Ticket) => {
     e.preventDefault();
@@ -98,21 +131,21 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
   // Error State
   if (error && items.length === 0) {
     return (
-      <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20 p-8 text-center my-6">
-        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-3">
+      <div className="rounded-[14px] border border-breached/30 bg-breached/5 p-8 text-center my-6 shadow-card">
+        <div className="w-10 h-10 rounded-full bg-breached/10 text-breached mx-auto flex items-center justify-center mb-3">
           <AlertCircle className="w-5 h-5" />
         </div>
-        <h3 className="text-base font-semibold text-red-900 dark:text-red-300">
+        <h3 className="text-base font-semibold text-breached">
           Failed to load tickets
         </h3>
-        <p className="text-xs sm:text-sm text-red-700/80 dark:text-red-400/80 max-w-md mx-auto mt-1 mb-4">
+        <p className="text-xs sm:text-sm text-text-secondary max-w-md mx-auto mt-1 mb-4">
           {error}
         </p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shadow-card cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Retry Connection</span>
@@ -125,17 +158,17 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
   // Loading Skeletons
   if (loading && items.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-2xs divide-y divide-border">
+      <div className="bg-card border border-border-ref rounded-[14px] overflow-hidden shadow-card divide-y divide-border-ref">
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <div key={i} className="p-4 flex items-center gap-4 animate-pulse">
-            <div className="w-16 h-4 bg-muted rounded" />
-            <div className="w-12 h-4 bg-muted rounded" />
+            <div className="w-4 h-4 bg-secondary rounded" />
+            <div className="w-16 h-4 bg-secondary rounded" />
             <div className="flex-1 space-y-2">
-              <div className="w-3/4 h-4 bg-muted rounded" />
-              <div className="w-1/3 h-3 bg-muted rounded" />
+              <div className="w-3/4 h-4 bg-secondary rounded" />
+              <div className="w-1/3 h-3 bg-secondary rounded" />
             </div>
-            <div className="w-20 h-4 bg-muted rounded hidden sm:block" />
-            <div className="w-24 h-4 bg-muted rounded hidden md:block" />
+            <div className="w-20 h-4 bg-secondary rounded hidden sm:block" />
+            <div className="w-24 h-4 bg-secondary rounded hidden md:block" />
           </div>
         ))}
       </div>
@@ -145,14 +178,14 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
   // Empty State
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-12 text-center my-4 shadow-2xs">
-        <div className="w-12 h-12 rounded-full bg-muted text-muted-foreground mx-auto flex items-center justify-center mb-3">
+      <div className="rounded-[14px] border border-border-ref bg-card p-12 text-center my-4 shadow-card">
+        <div className="w-12 h-12 rounded-full bg-surface-green text-primary mx-auto flex items-center justify-center mb-3">
           <Inbox className="w-6 h-6" />
         </div>
         <h3 className="text-sm sm:text-base font-semibold text-foreground">
           No matching tickets found
         </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto mt-1 mb-4">
+        <p className="text-xs sm:text-sm text-text-secondary max-w-sm mx-auto mt-1 mb-4">
           Try clearing your search query or adjusting your status, priority, or category filters.
         </p>
       </div>
@@ -161,54 +194,103 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
 
   const now = new Date();
 
+  const checkboxClass =
+    'w-4 h-4 rounded border-border-ref text-primary accent-primary cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring';
+
   return (
-    <div className="bg-card border border-border rounded-xl shadow-2xs overflow-hidden">
-      
+    <div className="bg-card border border-border-ref rounded-[14px] shadow-card overflow-hidden">
+
       {/* Desktop Table View (hidden on small screens) */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
+          <colgroup>
+            <col style={{ width: '4%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '25%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
-            <tr className="border-b border-border bg-muted/30 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              <th className="py-2.5 px-3.5 w-24">Ticket ID</th>
-              <th className="py-2.5 px-3.5 min-w-[280px]">Subject & Customer</th>
-              <th className="py-2.5 px-3.5 w-24">Priority</th>
-              <th className="py-2.5 px-3.5 w-28">Status</th>
-              <th className="py-2.5 px-3.5 w-24">Category</th>
-              <th className="py-2.5 px-3.5 min-w-[150px]">Assignee</th>
-              <th className="py-2.5 px-3.5 w-32">SLA Target</th>
-              <th className="py-2.5 px-3.5 w-20 text-right">Action</th>
+            <tr className="h-[40px] border-b border-border-ref bg-surface-search text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {/* 1 Selection */}
+              <th className="px-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all tickets"
+                  className={checkboxClass}
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
+                  onClick={stop}
+                  onChange={handleToggleAll}
+                />
+              </th>
+              {/* 2 Ticket ID */}
+              <th className="px-3">Ticket ID</th>
+              {/* 3 Subject & Customer */}
+              <th className="px-4">Subject &amp; Customer</th>
+              {/* 4 Priority */}
+              <th className="px-3">Priority</th>
+              {/* 5 Status */}
+              <th className="px-3">Status</th>
+              {/* 6 Category */}
+              <th className="px-3">Category</th>
+              {/* 7 Assignee */}
+              <th className="px-3">Assignee</th>
+              {/* 8 SLA Target */}
+              <th className="px-3">SLA Target</th>
+              {/* 9 Action */}
+              <th className="px-3 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border text-xs">
+          <tbody className="divide-y divide-border-ref text-xs">
             {items.map((ticket) => {
               const slaStatus = calculateSlaStatus(ticket, now);
               const remainingSla = formatRemainingSla(ticket.slaDeadline, now);
               const isAssignedToMe = ticket.assignee?.id === activeAgent.id;
+              const isSelected = selectedIds.has(ticket.id);
 
               return (
                 <tr
                   key={ticket.id}
                   onClick={() => router.push(`/tickets/${ticket.id}`)}
-                  className="group hover:bg-secondary/40 cursor-pointer transition-colors"
+                  className={`group h-[52px] cursor-pointer transition-colors ${
+                    isSelected ? 'bg-surface-green/50' : 'hover:bg-[#FAFBF8]'
+                  }`}
                 >
-                  {/* ID */}
-                  <td className="py-2.5 px-3.5 font-mono font-medium text-foreground whitespace-nowrap">
-                    <span className="group-hover:text-primary transition-colors">
-                      {ticket.id}
-                    </span>
+                  {/* 1 Selection checkbox (local state, stopPropagation) */}
+                  <td className="px-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ticket ${ticket.id}`}
+                      className={checkboxClass}
+                      checked={isSelected}
+                      onClick={stop}
+                      onChange={(e) => handleToggleRow(e, ticket.id)}
+                    />
                   </td>
 
-                  {/* Subject & Customer */}
-                  <td className="py-2.5 px-3.5 min-w-0 max-w-md">
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground truncate max-w-sm group-hover:text-primary transition-colors">
+                  {/* 2 Ticket ID — green semibold */}
+                  <td className="px-3 font-mono text-[13px] font-semibold text-primary whitespace-nowrap">
+                    {ticket.id}
+                  </td>
+
+                  {/* 3 Subject & Customer — two separate lines, vertically centered */}
+                  <td className="px-4 min-w-0">
+                    <div className="flex flex-col justify-center min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[12px] font-medium text-foreground truncate group-hover:text-primary transition-colors">
                           {ticket.subject}
                         </span>
                         {ticket.triageDecision === 'manual_review' && (
                           <span
                             title="Flagged for manual triage review"
-                            className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 flex-shrink-0"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-surface text-warning border border-amber-border flex-shrink-0"
                           >
                             <ShieldAlert className="w-2.5 h-2.5" />
                             Review
@@ -216,7 +298,7 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate">
+                      <div className="flex items-center gap-1.5 text-[11px] text-text-secondary mt-0.5 min-w-0">
                         <span className="font-medium text-foreground/80 truncate">
                           {ticket.customer.name}
                         </span>
@@ -232,26 +314,26 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                     </div>
                   </td>
 
-                  {/* Priority */}
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
+                  {/* 4 Priority */}
+                  <td className="px-3 whitespace-nowrap">
                     <PriorityBadge priority={ticket.priority} />
                   </td>
 
-                  {/* Status */}
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
+                  {/* 5 Status */}
+                  <td className="px-3 whitespace-nowrap">
                     <StatusBadge status={ticket.status} />
                   </td>
 
-                  {/* Category */}
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
+                  {/* 6 Category */}
+                  <td className="px-3 whitespace-nowrap">
                     <CategoryBadge category={ticket.category} />
                   </td>
 
-                  {/* Assignee */}
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
+                  {/* 7 Assignee — avatar + name, or compact Claim pill */}
+                  <td className="px-3 whitespace-nowrap">
                     {ticket.assignee ? (
                       <div className="flex items-center gap-1.5 text-xs">
-                        <div className="w-5 h-5 rounded-full bg-secondary border border-border flex items-center justify-center text-[10px] font-medium overflow-hidden flex-shrink-0">
+                        <div className="w-5 h-5 rounded-full bg-secondary border border-border-ref flex items-center justify-center text-[10px] font-medium overflow-hidden flex-shrink-0">
                           {ticket.assignee.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -271,24 +353,25 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                       <button
                         type="button"
                         onClick={(e) => handleClaim(e, ticket)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-secondary hover:bg-accent text-foreground hover:text-accent-foreground border border-border transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-green text-primary border border-surface-green-hover hover:bg-surface-green-hover transition-colors cursor-pointer"
                       >
-                        <UserPlus className="w-3 h-3" />
+                        <UserRoundPlus className="w-3.5 h-3.5 text-primary" />
                         <span>Claim</span>
                       </button>
                     )}
                   </td>
 
-                  {/* SLA */}
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
+                  {/* 8 SLA Target */}
+                  <td className="px-3 whitespace-nowrap">
                     <SlaIndicator slaStatus={slaStatus} remainingText={remainingSla} />
                   </td>
 
-                  {/* Row Link arrow */}
-                  <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                  {/* 9 Action — ChevronRight link to detail */}
+                  <td className="px-3 text-right whitespace-nowrap">
                     <Link
                       href={`/tickets/${ticket.id}`}
-                      className="p-1 rounded text-muted-foreground group-hover:text-primary transition-colors inline-block"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1 rounded text-text-secondary group-hover:text-primary transition-colors inline-block"
                       title="View details"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -302,27 +385,39 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
       </div>
 
       {/* Mobile Card View (optimized down to 375px without horizontal overflow) */}
-      <div className="lg:hidden divide-y divide-border">
+      <div className="lg:hidden divide-y divide-border-ref">
         {items.map((ticket) => {
           const slaStatus = calculateSlaStatus(ticket, now);
           const remainingSla = formatRemainingSla(ticket.slaDeadline, now);
           const isAssignedToMe = ticket.assignee?.id === activeAgent.id;
+          const isSelected = selectedIds.has(ticket.id);
 
           return (
             <div
               key={ticket.id}
               onClick={() => router.push(`/tickets/${ticket.id}`)}
-              className="p-3.5 hover:bg-secondary/40 active:bg-secondary/60 cursor-pointer transition-colors space-y-2.5"
+              className={`p-4 active:bg-surface-green/60 cursor-pointer transition-colors space-y-2.5 ${
+                isSelected ? 'bg-surface-green/50' : 'hover:bg-[#FAFBF8]'
+              }`}
             >
-              {/* Header: ID, Priority, SLA */}
+              {/* Header: checkbox, ID, Priority, SLA */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-xs font-semibold text-foreground">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ticket ${ticket.id}`}
+                    className="w-4 h-4 min-w-[16px] rounded border-border-ref text-primary accent-primary cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring"
+                    checked={isSelected}
+                    onClick={stop}
+                    onChange={(e) => handleToggleRow(e, ticket.id)}
+                  />
+                  <span className="font-mono text-[13px] font-semibold text-primary">
                     {ticket.id}
                   </span>
                   <PriorityBadge priority={ticket.priority} showIcon={false} />
                   {ticket.triageDecision === 'manual_review' && (
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex-shrink-0">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-surface text-warning border border-amber-border flex-shrink-0">
+                      <ShieldAlert className="w-2.5 h-2.5" />
                       Review
                     </span>
                   )}
@@ -332,13 +427,13 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
 
               {/* Subject */}
               <div className="min-w-0">
-                <h4 className="text-xs sm:text-sm font-semibold text-foreground line-clamp-2 leading-snug">
+                <h4 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
                   {ticket.subject}
                 </h4>
               </div>
 
               {/* Customer Info & Category */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="font-medium text-foreground truncate max-w-[130px]">
                   {ticket.customer.name}
                 </span>
@@ -355,14 +450,14 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
               </div>
 
               {/* Footer: Status, Assignee, Claim */}
-              <div className="flex items-center justify-between pt-1 border-t border-border/50 text-xs">
+              <div className="flex items-center justify-between pt-1 border-t border-border-ref/60 text-xs">
                 <StatusBadge status={ticket.status} />
 
                 <div className="flex items-center gap-2">
                   {ticket.assignee ? (
-                    <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                    <span className="text-[11px] text-text-secondary truncate max-w-[120px]">
                       {isAssignedToMe ? (
-                        <strong className="text-primary font-medium">You</strong>
+                        <strong className="text-primary font-semibold">You</strong>
                       ) : (
                         ticket.assignee.name
                       )}
@@ -371,12 +466,13 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                     <button
                       type="button"
                       onClick={(e) => handleClaim(e, ticket)}
-                      className="px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-full text-xs font-medium bg-surface-green text-primary border border-surface-green-hover hover:bg-surface-green-hover transition-colors cursor-pointer"
                     >
-                      Claim Ticket
+                      <UserRoundPlus className="w-3.5 h-3.5 text-primary" />
+                      <span>Claim</span>
                     </button>
                   )}
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-text-secondary flex-shrink-0" />
                 </div>
               </div>
             </div>

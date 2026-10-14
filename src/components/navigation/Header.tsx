@@ -8,12 +8,12 @@ import { setActiveAgent } from '@/src/store/ticketsSlice';
 import { Agent } from '@/src/types/ticket';
 import {
   ChevronDown,
-  Inbox,
   ShieldAlert,
   UserCheck,
   Menu,
   X,
-  Radio,
+  Search,
+  Bell,
 } from 'lucide-react';
 
 export default function Header() {
@@ -26,7 +26,6 @@ export default function Header() {
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isTicketsActive = pathname.startsWith('/tickets') || pathname === '/';
   const isReviewActive = pathname.startsWith('/review');
 
   const handleSelectAgent = (agent: Agent) => {
@@ -35,233 +34,198 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-card/95 backdrop-blur-sm border-b border-border shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          
-          {/* Product Brand */}
-          <div className="flex items-center gap-6">
-            <Link href="/tickets" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm tracking-wider shadow-xs group-hover:opacity-90 transition-opacity">
-                FF
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-sm sm:text-base tracking-tight text-foreground leading-none">
-                  Freeflow
-                </span>
-                <span className="text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
-                  Support Operations
-                </span>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1.5 ml-4">
-              <Link
-                href="/tickets"
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-                  isTicketsActive
-                    ? 'bg-secondary text-foreground font-semibold shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-                }`}
-              >
-                <Inbox className="w-4 h-4" />
-                <span>All Tickets</span>
-                {metrics && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[11px] font-mono bg-muted text-muted-foreground tabular-nums">
-                    {metrics.totalTickets}
-                  </span>
-                )}
-                {newTicketsCount > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                )}
-              </Link>
-
-              <Link
-                href="/review"
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-                  isReviewActive
-                    ? 'bg-secondary text-foreground font-semibold shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-                }`}
-              >
-                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Manual Triage Queue</span>
-                {metrics && metrics.manualReviewTickets > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[11px] font-mono font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 tabular-nums">
-                    {metrics.manualReviewTickets}
-                  </span>
-                )}
-              </Link>
-            </nav>
-          </div>
-
-          {/* Right Header Area: Live Sync Dot & Agent Switcher */}
-          <div className="flex items-center gap-3">
-            {/* Realtime Stream indicator */}
-            <div
-              className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1 rounded bg-muted/50 border border-border/50"
-              title="Real-time cursor updates active"
-            >
-              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" />
-              <span className="font-mono text-[11px] tracking-tight">Syncing</span>
-            </div>
-
-            {/* Agent Selector Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                className="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-lg border border-border bg-card hover:bg-secondary/50 text-foreground transition-all duration-150 focus:outline-hidden focus:ring-2 focus:ring-ring"
-                aria-haspopup="true"
-                aria-expanded={agentDropdownOpen}
-              >
-                {/* Avatar with fallback initials */}
-                <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0 overflow-hidden">
-                  {activeAgent.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={activeAgent.avatarUrl}
-                      alt={activeAgent.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    activeAgent.name.charAt(0)
-                  )}
-                </div>
-
-                <div className="flex flex-col text-left leading-tight hidden sm:block">
-                  <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
-                    {activeAgent.name}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                    {activeAgent.role}
-                  </span>
-                </div>
-
-                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-1" />
-              </button>
-
-              {/* Dropdown Menu */}
-              {agentDropdownOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setAgentDropdownOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-1.5 w-64 rounded-lg bg-popover border border-border shadow-lg py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                    <div className="px-3 py-1.5 border-b border-border/60 mb-1">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        Active Support Agent
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Claims and audit updates will be recorded under this identity.
-                      </p>
-                    </div>
-
-                    <div className="max-h-60 overflow-y-auto py-0.5">
-                      {availableAgents.map((agent) => {
-                        const isCurrent = agent.id === activeAgent.id;
-                        return (
-                          <button
-                            key={agent.id}
-                            type="button"
-                            onClick={() => handleSelectAgent(agent)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
-                              isCurrent
-                                ? 'bg-accent text-accent-foreground font-medium'
-                                : 'text-foreground hover:bg-secondary/70'
-                            }`}
-                          >
-                            <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-xs font-semibold overflow-hidden flex-shrink-0">
-                              {agent.avatarUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={agent.avatarUrl}
-                                  alt={agent.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                agent.name.charAt(0)
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="font-medium text-foreground truncate">
-                                {agent.name}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground truncate">
-                                {agent.role}
-                              </span>
-                            </div>
-                            {isCurrent && (
-                              <UserCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+    <header className="sticky top-0 z-30 w-full bg-card border-b border-border">
+      <div className="h-[72px] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        {/* Left: global search (presentational) */}
+        <div className="flex-1 min-w-0 max-w-[640px]">
+          <label htmlFor="global-search" className="sr-only">
+            Search tickets
+          </label>
+          <div className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-text-secondary pointer-events-none" />
+            <input
+              id="global-search"
+              type="text"
+              placeholder="Search tickets, subjects, customers..."
+              className="w-full h-[42px] pl-10 pr-16 rounded-[11px] bg-card border border-border text-[14px] text-foreground placeholder:text-text-secondary transition-colors duration-200 focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-primary"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border border-border bg-secondary text-[11px] font-medium text-text-secondary tabular-nums pointer-events-none">
+              ⌘ K
+            </span>
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-3 border-t border-border space-y-1 animate-in fade-in duration-100">
-            <Link
-              href="/tickets"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium ${
-                isTicketsActive
-                  ? 'bg-secondary text-foreground font-semibold'
-                  : 'text-muted-foreground hover:bg-secondary/60'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Inbox className="w-4 h-4" />
-                <span>All Tickets</span>
-              </div>
-              {metrics && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-muted text-muted-foreground tabular-nums">
-                  {metrics.totalTickets}
-                </span>
-              )}
-            </Link>
-
-            <Link
-              href="/review"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium ${
-                isReviewActive
-                  ? 'bg-secondary text-foreground font-semibold'
-                  : 'text-muted-foreground hover:bg-secondary/60'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600" />
-                <span>Manual Triage Queue</span>
-              </div>
-              {metrics && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-100 text-amber-800 tabular-nums">
-                  {metrics.manualReviewTickets}
-                </span>
-              )}
-            </Link>
+        {/* Right cluster */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Live-sync indicator restyled as green "Synced" pill
+              (same source as the previous Radio indicator: real-time cursor polling) */}
+          <div
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface-green text-[12px] font-medium text-[#246B4B]"
+            title="Real-time cursor updates active"
+          >
+            <span className="relative flex w-2 h-2">
+              <span className="absolute inline-flex w-full h-full rounded-full bg-[#246B4B] opacity-60 animate-ping" />
+              <span className="relative inline-flex w-2 h-2 rounded-full bg-[#246B4B]" />
+            </span>
+            <span>Synced</span>
           </div>
-        )}
+
+          {/* Notifications bell with live new-tickets badge */}
+          <Link
+            href="/review"
+            aria-label="Review queue notifications"
+            className={`relative p-2 rounded-[10px] transition-colors duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring ${
+              isReviewActive
+                ? 'bg-secondary text-foreground'
+                : 'text-text-secondary hover:bg-secondary hover:text-foreground'
+            }`}
+            title="Manual triage queue"
+          >
+            <Bell className="w-5 h-5" />
+            {newTicketsCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-amber-surface border border-amber-border text-[11px] font-semibold text-warning tabular-nums">
+                {newTicketsCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Subtle vertical divider */}
+          <span className="hidden sm:block w-px h-7 bg-border" aria-hidden="true" />
+
+          {/* Agent Selector Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
+              className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-[10px] hover:bg-secondary text-foreground transition-colors duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring"
+              aria-haspopup="true"
+              aria-expanded={agentDropdownOpen}
+            >
+              {/* Avatar with fallback initials */}
+              <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0 overflow-hidden">
+                {activeAgent.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={activeAgent.avatarUrl}
+                    alt={activeAgent.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  activeAgent.name.charAt(0)
+                )}
+              </div>
+
+              <div className="flex-col text-left leading-tight hidden sm:flex">
+                <span className="text-[13px] font-semibold text-foreground truncate max-w-[140px]">
+                  {activeAgent.name}
+                </span>
+                <span className="text-[11px] text-text-secondary truncate max-w-[140px]">
+                  {activeAgent.role}
+                </span>
+              </div>
+
+              <ChevronDown className="w-4 h-4 text-text-secondary ml-0.5" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {agentDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setAgentDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-1.5 w-64 rounded-lg bg-popover border border-border shadow-lg py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3 py-1.5 border-b border-border/60 mb-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Active Support Agent
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Claims and audit updates will be recorded under this identity.
+                    </p>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto py-0.5">
+                    {availableAgents.map((agent) => {
+                      const isCurrent = agent.id === activeAgent.id;
+                      return (
+                        <button
+                          key={agent.id}
+                          type="button"
+                          onClick={() => handleSelectAgent(agent)}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors duration-200 cursor-pointer ${
+                            isCurrent
+                              ? 'bg-accent text-accent-foreground font-medium'
+                              : 'text-foreground hover:bg-secondary/70'
+                          }`}
+                        >
+                          <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-xs font-semibold overflow-hidden flex-shrink-0">
+                            {agent.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={agent.avatarUrl}
+                                alt={agent.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              agent.name.charAt(0)
+                            )}
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-medium text-foreground truncate">
+                              {agent.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {agent.role}
+                            </span>
+                          </div>
+                          {isCurrent && (
+                            <UserCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-[10px] text-text-secondary hover:text-foreground hover:bg-secondary transition-colors duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Navigation Drawer — keeps /review reachable on small screens */}
+      {mobileMenuOpen && (
+        <div className="md:hidden px-4 sm:px-6 py-3 border-t border-border space-y-1 animate-in fade-in duration-100">
+          <Link
+            href="/review"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 cursor-pointer ${
+              isReviewActive
+                ? 'bg-secondary text-foreground font-semibold'
+                : 'text-text-secondary hover:bg-secondary/60 hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-warning" />
+              <span>Manual Triage Queue</span>
+            </div>
+            {metrics && metrics.manualReviewTickets > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-surface border border-amber-border text-warning tabular-nums">
+                {metrics.manualReviewTickets}
+              </span>
+            )}
+          </Link>
+        </div>
+      )}
     </header>
   );
 }

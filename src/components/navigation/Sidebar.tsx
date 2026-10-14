@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/src/store/hooks';
@@ -11,22 +11,27 @@ import {
   ChartNoAxesColumn,
   Settings,
   ChevronRight,
+  Menu,
+  X,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { metrics, activeAgent } = useAppSelector((state) => state.tickets);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const isDashboardActive = pathname.startsWith('/tickets') || pathname === '/';
   const ticketsBadge = metrics ? metrics.totalTickets : '';
 
   const inactiveItemClass =
-    'flex items-center gap-3 h-[42px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 cursor-pointer';
+    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 cursor-pointer';
   const inertItemClass =
-    'flex items-center gap-3 h-[42px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 w-full text-left cursor-pointer';
+    'flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-medium text-foreground hover:bg-[#F0F1EC] transition-colors duration-200 w-full text-left cursor-pointer';
 
-  return (
-    <aside className="w-[276px] flex-shrink-0 h-screen sticky top-0 bg-sidebar border-r border-border flex flex-col">
+  const closeMobile = () => setMobileOpen(false);
+
+  const sidebarInner = (
+    <>
       {/* Brand block */}
       <div className="flex items-center gap-3 px-5 pt-6 pb-5">
         <div className="w-11 h-11 rounded-[12px] bg-primary text-primary-foreground flex items-center justify-center font-bold text-base tracking-wide flex-shrink-0">
@@ -46,9 +51,10 @@ export default function Sidebar() {
           {/* Dashboard - active route */}
           <Link
             href="/tickets"
+            onClick={closeMobile}
             className={
               isDashboardActive
-                ? 'relative flex items-center gap-3 h-[42px] px-3 rounded-[10px] text-[14px] font-semibold bg-surface-green text-[#246B4B] transition-colors duration-200 cursor-pointer'
+                ? 'relative flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-semibold bg-surface-green text-[#246B4B] transition-colors duration-200 cursor-pointer'
                 : inactiveItemClass
             }
             aria-current={isDashboardActive ? 'page' : undefined}
@@ -139,6 +145,48 @@ export default function Sidebar() {
           <ChevronRight className="w-4 h-4 text-text-secondary flex-shrink-0" />
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop / tablet sidebar — collapses in width below lg; full 276px at xl, ~252px at lg */}
+      <aside className="hidden lg:flex w-[252px] xl:w-[276px] flex-shrink-0 h-screen sticky top-0 bg-sidebar border-r border-border flex-col">
+        {sidebarInner}
+      </aside>
+
+      {/* Mobile open trigger (floating) — hidden on lg+ */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
+        aria-expanded={mobileOpen}
+        className="lg:hidden fixed bottom-4 left-4 z-40 w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-card cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div
+            className="absolute inset-0 bg-black/40 animate-in fade-in duration-150"
+            onClick={closeMobile}
+            aria-hidden="true"
+          />
+          <aside className="relative w-[276px] max-w-[85vw] h-full bg-sidebar border-r border-border flex flex-col animate-in slide-in-from-left duration-200">
+            <button
+              type="button"
+              onClick={closeMobile}
+              aria-label="Close navigation menu"
+              className="absolute top-4 right-3 z-10 p-1.5 rounded-[10px] text-text-secondary hover:bg-secondary hover:text-foreground transition-colors duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {sidebarInner}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
