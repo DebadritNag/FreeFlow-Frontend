@@ -6,10 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAppSelector } from '@/src/store/hooks';
 import {
   LayoutDashboard,
-  Ticket,
   Headset,
   ChartNoAxesColumn,
-  Settings,
   ChevronRight,
   Menu,
   X,
@@ -17,7 +15,7 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { metrics, activeAgent } = useAppSelector((state) => state.tickets);
+  const { activeAgent } = useAppSelector((state) => state.tickets);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // A ticket detail route (/tickets/{id}) maps to "Support Operations" active to
@@ -26,7 +24,6 @@ export default function Sidebar() {
   const isReviewActive = pathname.startsWith('/review') || isTicketDetail;
   const isDashboardActive =
     !isReviewActive && (pathname.startsWith('/tickets') || pathname === '/');
-  const ticketsBadge = metrics ? metrics.totalTickets : '';
 
   const activeItemClass =
     'relative flex items-center gap-3 h-[44px] px-3 rounded-[10px] text-[14px] font-semibold bg-surface-green text-[#246B4B] transition-colors duration-200 cursor-pointer';
@@ -71,15 +68,6 @@ export default function Sidebar() {
             <span>Dashboard</span>
           </Link>
 
-          {/* Tickets - count badge bound to live metrics.totalTickets */}
-          <button type="button" aria-disabled="true" className={inertItemClass}>
-            <Ticket className="w-[18px] h-[18px]" />
-            <span className="flex-1">Tickets</span>
-            <span className="ml-auto min-w-[26px] px-2 py-0.5 rounded-full text-[12px] font-semibold text-[#246B4B] bg-surface-green text-center tabular-nums">
-              {ticketsBadge}
-            </span>
-          </button>
-
           {/* Support Operations - active on /review */}
           <Link
             href="/review"
@@ -101,33 +89,33 @@ export default function Sidebar() {
             <ChartNoAxesColumn className="w-[18px] h-[18px]" />
             <span>Reports</span>
           </button>
-
-          {/* Settings - inert, no route */}
-          <button type="button" aria-disabled="true" className={inertItemClass}>
-            <Settings className="w-[18px] h-[18px]" />
-            <span>Settings</span>
-          </button>
         </nav>
 
-        {/* Bottom promo card */}
+        {/* Bottom promo card — bg-customer.png background */}
         <div className="mt-auto">
-          <div className="relative w-full h-[145px] rounded-[14px] bg-surface-green overflow-hidden p-4">
-            <span className="block w-8 h-[3px] rounded-full bg-[#246B4B] mb-3" />
-            <p className="text-[15px] font-semibold text-foreground leading-tight">
-              Better support.
-            </p>
-            <p className="text-[15px] font-semibold text-foreground leading-tight">
-              Happier customers.
-            </p>
-            {/* Subtle low-contrast decorative leaf */}
-            <svg
+          <div
+            className="relative w-full h-[145px] rounded-[14px] bg-surface-green overflow-hidden p-4"
+            style={{
+              backgroundImage: "url('/bg-customer.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            {/* Subtle warm-ivory gradient overlay (left → transparent) for text legibility */}
+            <div
               aria-hidden="true"
-              viewBox="0 0 48 48"
-              className="absolute bottom-2 right-2 w-14 h-14 text-[#246B4B]/10"
-              fill="currentColor"
-            >
-              <path d="M40 8C20 8 8 20 8 40c0 0 0-14 14-22C34 11 40 8 40 8zm-6 10C22 22 16 32 16 40c6-2 14-8 18-22z" />
-            </svg>
+              className="absolute inset-0 bg-gradient-to-r from-[#F7F6F2]/85 via-[#F7F6F2]/45 to-transparent"
+            />
+            <div className="relative z-10">
+              <span className="block w-8 h-[3px] rounded-full bg-[#246B4B] mb-3" />
+              <p className="text-[15px] font-semibold text-foreground leading-tight">
+                Better support.
+              </p>
+              <p className="text-[15px] font-semibold text-foreground leading-tight">
+                Happier customers.
+              </p>
+            </div>
           </div>
         </div>
       </div>

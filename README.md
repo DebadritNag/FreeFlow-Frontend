@@ -1,158 +1,196 @@
-# Freeflow Ventures — Support Ticket Dashboard
+# Freeflow — Support Operations Desk
 
-A production-quality, high-density Support Ticket Dashboard engineered for the **Freeflow Ventures Frontend Assignment**. Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui primitives, and Redux Toolkit.
+A high-density, enterprise support operations console for triaging tickets, enforcing SLAs, and resolving an AI-flagged manual review queue. Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui primitives, and Redux Toolkit, finished in a calm warm-ivory and forest-green light theme.
 
 ---
 
-## 🚀 Quick Start
+## Quick start
 
-### 1. Installation
+Install dependencies:
+
 ```bash
 npm install
 ```
 
-### 2. Run Development Server
+Run the development server:
+
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) (or [http://localhost:3001](http://localhost:3001) if port 3000 is occupied).
 
-### 3. Run Test Suite
+Open [http://localhost:3000](http://localhost:3000). If port 3000 is taken, Next.js will pick the next free port and print the URL. The root route (`/`) redirects to `/tickets`.
+
+Run the test suite (Vitest):
+
 ```bash
-npm test
+npm run test
 ```
-Executes 15 comprehensive unit tests covering all business invariants, status transitions, SLA calculations, sanitization, and concurrency collisions using Vitest.
 
-### 4. Lint & Type Check
+Lint and type-check:
+
 ```bash
 npm run lint
 npx tsc --noEmit
 ```
 
----
+Create a production build:
 
-## 🎯 Core Routes & Features
-
-### 1. Main Tickets Dashboard (`/tickets`)
-- **Dataset Scale**: Backed by an in-memory database seeded with **2,000+ realistic tickets** spanning diverse categories, enterprise customer tiers, and realistic SLA timestamps.
-- **Top Metrics Summary**: Live counters for total tickets, open tickets, tickets in progress, SLA at-risk, SLA breached, and pending manual reviews.
-- **URL-Synced Filter State**:
-  - Full-text search debounced at 300ms across subject, description, and customer name.
-  - Multi-select filters for Status (`open`, `in_progress`, `resolved`), Priority (`P0`, `P1`, `P2`, `P3`), Category (`technical`, `billing`, `security`, `account`, `feature_request`, `general`), Triage (`automated`, `manual_review`), and SLA status (`on_track`, `at_risk`, `late`).
-  - Search and filter queries synchronize bi-directionally with browser URL parameters for shareable links and bookmarking.
-- **High-Density Table View**:
-  - Displays ID, Subject & Customer info, Priority badge, Status badge, Category, Assignee, SLA countdown timer, and quick navigation.
-  - Optimized for desktop data density with monospace IDs and tabular numerical countdowns.
-- **Responsive Mobile Layout**:
-  - Smooth card-based view tailored down to **375px mobile viewports** with zero horizontal overflow.
-- **Live Sync Cursor Polling**:
-  - Header indicator tracks simulated live activity and background tickets arriving in real time.
-
-### 2. Ticket Detail Workspace (`/tickets/[id]`)
-- **Safe Content Rendering (Security & XSS Protection)**:
-  - Customer messages and descriptions are rendered as safe plain text with whitespace preservation.
-  - Zero usage of `dangerouslySetInnerHTML`.
-  - Injected script tags (`<script>alert('xss')</script>`), `<img>` onerror exploits, and iframe vectors are cleanly neutralized.
-  - Attachment URLs are verified against a safe protocol whitelist (blocking `javascript:`, `data:`, `vbscript:`, `file:`).
-- **Status Lifecycle Enforcement**:
-  - Strict state machine: `open → in_progress → resolved → open`.
-  - Illegal shortcuts (e.g., `open → resolved` without work in progress) are rejected with clear error guidance.
-- **Optimistic Claiming & 409 Conflict Simulation**:
-  - One-click ticket claiming with instant optimistic UI update.
-  - **"Simulate 409 Conflict" Button**: Dedicated button allows reviewers to simulate a simultaneous concurrent claim by another agent, demonstrating optimistic rollback and 409 toast handling on demand.
-  - **"Take Over Ticket"**: Allows agents to reassign or take over a ticket previously claimed by another agent.
-  - **"Release Ticket"**: Enables returning a ticket back to the unassigned queue.
-- **Triage & Properties Workspace**:
-  - Real-time priority and category updates.
-  - **Enterprise SLA Floor**: Prohibits assigning low urgency (`P2` or `P3`) to Enterprise accounts, enforcing the business rule that enterprise tickets must remain `P0` or `P1`.
-
-### 3. Manual Triage Queue (`/review`)
-- Dedicated review workspace filtering tickets flagged with `triageDecision: 'manual_review'`.
-- Displays explicit human-review reasons (e.g., high-touch account sentiment, security impact keywords, VIP billing escalation).
-- Displays AI suggestions for priority and category along with model confidence score.
-- Allows one-click triage resolution applying AI recommendations or manual overrides directly.
-
----
-
-## 🎨 Visual Direction & Design System
-
-- **Color Palette**:
-  - **Background**: Soft Warm Ivory (`#F7F6F2` / `hsl(45, 20%, 96%)`)
-  - **Surfaces**: Crisp White Cards (`#FFFFFF`) with subtle warm borders (`#E5E3DC`)
-  - **Text**: Deep Charcoal (`#202522` / `hsl(150, 6%, 13%)`)
-  - **Primary Brand**: Forest Green (`#246B4B` / `hsl(153, 50%, 28%)`)
-  - **Warning / Review**: Restrained Warm Amber (`#D97736`)
-- **Typography & Details**:
-  - Tabular numerals (`tabular-nums`) on all SLA deadlines and ticket counts to eliminate layout jitter.
-  - Button micro-interactions with `:active:scale-[0.98]` feedback and transitions < 200ms.
-  - High WCAG AA/AAA contrast ratios on badges and typography.
-
----
-
-## 🧪 Testing Coverage
-
-The test suite in [`tests/business-rules.test.ts`](tests/business-rules.test.ts) verifies:
-1. **Status Transitions**: Validates `open → in_progress → resolved → open` and rejects illegal jumps.
-2. **Enterprise Priority Invariant**: Confirms enterprise tickets cannot be P2 or P3, and verifies normalization parser auto-adjusts corrupt P2/P3 records to P1.
-3. **SLA Deadlines**: Checks P0 (1h), P1 (4h), P2 (24h), and P3 (72h) durations, as well as `at_risk` (<20% remaining) and `late` status classifications.
-4. **Content Security**: Tests XSS plain-text sanitization and dangerous attachment URL blocking (`javascript:`, `data:`).
-5. **Concurrency & Conflicts**: Validates optimistic claim rollbacks, conflicting agent assignment on 409, and cursor-based update tracking.
-
-Run tests anytime with:
 ```bash
-npm test
+npm run build
 ```
 
 ---
 
-## 📁 Project Structure
+## Tech stack
+
+- **Framework**: Next.js 16 (App Router) with React 19
+- **Language**: TypeScript (strict)
+- **Styling**: Tailwind CSS v4 with CSS-variable design tokens; shadcn/ui (`base-nova`) primitives
+- **State**: Redux Toolkit + react-redux
+- **Icons**: lucide-react
+- **Toasts**: sonner
+- **Testing**: Vitest
+
+Data is served by an in-memory mock database (seeded with 2,000+ realistic tickets) through Next.js route handlers, so the app runs end-to-end with no external services, database, or API keys.
+
+---
+
+## Application shell
+
+Every page shares one consistent shell:
+
+- **Left sidebar (~276px)** — brand block, navigation, a promotional card, and the active-agent profile. Navigation items: **Dashboard** (`/tickets`), **Support Operations** (`/review`), and **Reports**. The active item is derived from the current route; a ticket detail route highlights Support Operations. Below the `lg` breakpoint the sidebar collapses into a mobile drawer. The promotional card ("Better support. Happier customers.") uses `public/bg-customer.png` as its background with a subtle ivory overlay for legibility.
+- **Top header (~72px)** — global search with a `⌘ K` hint, a live "Synced" indicator, a notification bell, and the active-agent profile.
+- **Main workspace** — the warm-ivory canvas that scrolls under the fixed sidebar and header.
+
+---
+
+## Routes & features
+
+### Tickets dashboard — `/tickets`
+
+- **Scale**: in-memory database seeded with 2,000+ realistic tickets across categories, customer tiers, and SLA timestamps.
+- **KPI cards**: live counters for Open Backlog, In Progress, SLA Risk & Overdue (with breached count), and the Manual Triage Queue, each with a sparkline. The SLA card carries a distinct amber warning treatment.
+- **URL-synced filters**: a 300ms-debounced full-text search plus dropdown filters for Status, Priority, Category, SLA Status, and Triage Decision, with a Clear Filters action. Filter and search state synchronizes with the browser URL for shareable, bookmarkable links.
+- **Data table**: ID, Subject & Customer (two lines), Priority, Status, Category, Assignee, SLA countdown, and a row action, with select-all and per-row selection. Monospace IDs and tabular SLA countdowns keep the layout from jittering.
+- **Responsive**: a card-based layout down to 375px with no horizontal overflow.
+- **Live sync**: cursor-based background polling surfaces newly arriving tickets.
+
+### Ticket detail workspace — `/tickets/[id]`
+
+- **Summary card**: ID, priority/status/category/tier badges, title, timestamps, and the claim actions.
+- **Safe content rendering**: customer messages render as plain text with whitespace preserved — no `dangerouslySetInnerHTML`. Attachment URLs are checked against a safe-protocol allowlist; unsafe vectors (`javascript:`, `data:`, `vbscript:`, `file:`) render as a blocked badge instead of a link.
+- **Downloadable attachments**: safe attachments link to a real static asset (`public/attachments/`) and download with the attachment's filename.
+- **Status lifecycle**: a strict state machine, `open → in_progress → resolved → open`; illegal transitions are rejected with clear guidance.
+- **Claim flow**: one-click optimistic claiming, plus **Take Over** and **Release**. A **Simulate 409 Conflict** action demonstrates optimistic rollback and conflict toast handling on demand.
+- **Triage & Properties**: real-time priority and category updates with an enterprise SLA floor — enterprise accounts cannot be set below `P1`.
+- **Right rail**: Status Lifecycle, Service Level Agreement (live, derived SLA status), Ticket Ownership, and Customer Details.
+
+### Manual Triage Review Queue — `/review`
+
+- Review workspace filtering tickets flagged `triageDecision: 'manual_review'`.
+- Each card shows the human-review reason, the AI-suggested priority and category with a confidence score, and Approve Priority / Approve Category controls.
+- **Approve & Route** applies the decision and releases the ticket to the general support pool, enforcing the same enterprise priority rule.
+
+---
+
+## Design system
+
+A single warm, light theme — defined as CSS variables in `app/globals.css` and consumed through Tailwind token classes (`bg-background`, `bg-card`, `text-foreground`, `bg-primary`, etc.). The app is light-only: `color-scheme: light` is declared and the `.dark` selector is intentionally pinned to the light palette so the UI never renders a dark variant.
+
+| Token | Hex | Usage |
+|---|---|---|
+| Canvas | `#F7F6F2` | Main workspace and sidebar background |
+| Surface | `#FFFFFF` | Header, cards, panels |
+| Text | `#202522` | Headings and primary text |
+| Secondary text | `#68736D` | Muted labels and metadata |
+| Primary | `#246B4B` | Primary actions, active navigation, positive status |
+| Warning | `#D97736` | SLA risk, caution, and the simulate-conflict action |
+| Critical | `#C83F36` | Breached SLAs and genuinely critical states |
+| Border | `#E6E5DF` | Subtle card and control borders |
+
+Details: tabular numerals on SLA deadlines and counts, restrained hover transitions under ~200ms, lucide outline icons (no emoji), and WCAG-conscious contrast on text and badges.
+
+---
+
+## Testing
+
+The suite in [`tests/business-rules.test.ts`](tests/business-rules.test.ts) covers the core business invariants:
+
+1. **Status transitions** — validates `open → in_progress → resolved → open` and rejects illegal jumps.
+2. **Enterprise priority invariant** — enterprise tickets cannot be `P2`/`P3`; the normalizer auto-corrects corrupt records to `P1`.
+3. **SLA deadlines** — `P0` (1h), `P1` (4h), `P2` (24h), `P3` (72h), plus `at_risk` (<20% remaining) and `late` classification.
+4. **Content security** — XSS plain-text handling and dangerous attachment-URL blocking.
+5. **Concurrency & conflicts** — optimistic claim rollback, conflicting-agent assignment on 409, and cursor-based update tracking.
+
+```bash
+npm run test
+```
+
+---
+
+## Project structure
 
 ```
 freeflow-support-desk/
 ├── app/
 │   ├── api/
-│   │   ├── agents/route.ts          # Agent roster endpoint
-│   │   ├── tickets/
-│   │   │   ├── route.ts             # Paginated list, search, filter
-│   │   │   ├── updates/route.ts     # Live polling cursor stream
-│   │   │   └── [id]/
-│   │   │       ├── route.ts         # Single ticket fetch
-│   │   │       ├── claim/route.ts   # Claim & conflict handling (with force & simulation)
-│   │   │       ├── unclaim/route.ts # Release ticket back to unassigned
-│   │   │       ├── status/route.ts  # Status lifecycle transition
-│   │   │       └── triage/route.ts  # Priority/category override
+│   │   ├── agents/route.ts              # Agent roster endpoint
+│   │   └── tickets/
+│   │       ├── route.ts                 # Paginated list, search, filter
+│   │       ├── updates/route.ts         # Live polling cursor stream
+│   │       └── [id]/
+│   │           ├── route.ts             # Single ticket fetch
+│   │           ├── claim/route.ts       # Claim, force take-over, 409 simulation
+│   │           ├── unclaim/route.ts     # Release ticket to the unassigned pool
+│   │           ├── status/route.ts      # Status lifecycle transition
+│   │           └── triage/route.ts      # Priority/category override
 │   ├── tickets/
-│   │   ├── page.tsx                 # Main table & dashboard view
-│   │   └── [id]/page.tsx            # Ticket detail workspace
-│   ├── review/
-│   │   └── page.tsx                 # Manual triage queue
-│   ├── layout.tsx                   # Root layout with Redux & Toaster
-│   └── page.tsx                     # Redirect to /tickets
+│   │   ├── page.tsx                      # Dashboard: KPIs, filters, table
+│   │   └── [id]/page.tsx                 # Ticket detail workspace
+│   ├── review/page.tsx                   # Manual triage review queue
+│   ├── layout.tsx                        # Root layout: Redux provider + Toaster
+│   ├── page.tsx                          # Redirects to /tickets
+│   └── globals.css                       # Theme tokens (light-only) & base styles
 ├── src/
 │   ├── components/
-│   │   ├── navigation/Header.tsx    # App header, active agent switcher, sync pulse
+│   │   ├── navigation/
+│   │   │   ├── Sidebar.tsx                # App sidebar: brand, nav, promo, profile
+│   │   │   └── Header.tsx                 # Top header: search, sync, profile
 │   │   └── tickets/
-│   │       ├── Badges.tsx           # Status, Priority, Category, Tier, SLA badges
-│   │       ├── MetricsSummary.tsx   # Top KPI metrics counter cards
-│   │       ├── TicketFilters.tsx    # Debounced search & URL-synced filter controls
-│   │       ├── TicketTable.tsx      # Desktop table & 375px mobile card view
-│   │       ├── Pagination.tsx       # Paginated page stepper
-│   │       └── NewTicketsBanner.tsx # Live update alert pill
+│   │       ├── Badges.tsx                 # Status, Priority, Category, Tier, SLA badges
+│   │       ├── MetricsSummary.tsx         # KPI cards with sparklines
+│   │       ├── TicketFilters.tsx          # Debounced search & URL-synced filters
+│   │       ├── TicketTable.tsx            # Desktop table & mobile card view
+│   │       ├── Pagination.tsx             # Page stepper
+│   │       └── NewTicketsBanner.tsx       # Live update alert pill
 │   ├── lib/
-│   │   ├── api-client.ts            # Typed client API requests
-│   │   ├── sla.ts                   # SLA calculator and thresholds
-│   │   └── ticket-rules.ts          # Business invariant validators & sanitizer
+│   │   ├── api-client.ts                  # Typed client API requests
+│   │   ├── sla.ts                         # SLA calculator and thresholds
+│   │   └── ticket-rules.ts               # Business invariants, validators, sanitizer
 │   ├── server/
-│   │   ├── mock-db.ts               # In-memory database with 2000+ seeded tickets
-│   │   └── api-helpers.ts           # Latency & transient error simulator
+│   │   ├── mock-db.ts                     # In-memory DB (2,000+ seeded tickets)
+│   │   └── api-helpers.ts                 # Latency & transient-error simulation
 │   ├── store/
-│   │   ├── ticketsSlice.ts          # Redux Toolkit state, actions, reducers
-│   │   ├── hooks.ts                 # Typed useDispatch and useSelector
-│   │   └── index.ts                 # Redux store configuration
+│   │   ├── ticketsSlice.ts               # Redux Toolkit state, actions, reducers
+│   │   ├── hooks.ts                       # Typed useAppDispatch / useAppSelector
+│   │   ├── index.ts                       # Store configuration
+│   │   └── StoreProvider.tsx             # Client store provider
 │   └── types/
-│       └── ticket.ts                # TypeScript domain models and schemas
+│       └── ticket.ts                      # Domain models and types
+├── public/
+│   ├── bg-customer.png                    # Sidebar promo card background
+│   └── attachments/                       # Static downloadable attachment assets
 ├── tests/
-│   └── business-rules.test.ts       # 15 Vitest business invariant tests
-├── DECISIONS.md                     # Architectural, UX, and technical decisions log
+│   └── business-rules.test.ts             # Vitest business-invariant tests
+├── DECISIONS.md                           # Architecture, UX, and technical decisions
 └── README.md
 ```
+
+---
+
+## Notes
+
+- All data is in-memory and resets on server restart; there are no external dependencies or secrets to configure.
+- The mock API simulates realistic latency and occasional transient errors to exercise loading, error, and retry states.
+- See [`DECISIONS.md`](DECISIONS.md) for the architectural and UX rationale behind the implementation.

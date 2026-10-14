@@ -192,8 +192,10 @@ export class MockDatabase {
             {
               id: `att-${i}-1`,
               name: `system_diagnostics_${i}.log`,
-              size: `${(1.2 + (i % 5) * 0.7).toFixed(1)} MB`,
-              url: `https://storage.freeflow.internal/attachments/FF-${1000 + i}/diagnostics.log`,
+              size: `1.2 MB`,
+              // Served as a real static asset from /public/attachments so the
+              // Download action delivers an actual file (not a dead internal URL).
+              url: `/attachments/system_diagnostics_300.log`,
               isSafe: true,
             },
           ]

@@ -34,7 +34,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <StoreProvider>
             {children}
-            <Toaster richColors position="top-right" closeButton />
+            <Toaster theme="light" richColors position="top-right" closeButton />
           </StoreProvider>
         </Suspense>
       </body>

@@ -508,6 +508,7 @@ export default function TicketDetailPage() {
                             {att.isSafe ? (
                               <a
                                 href={att.url}
+                                download={att.name}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-card hover:bg-subtle-hover text-foreground border border-border-ref transition-colors duration-200 cursor-pointer"
