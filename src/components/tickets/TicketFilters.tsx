@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { resetFilters, setFilters } from '@/src/store/ticketsSlice';
 import { Priority, SlaStatus, TicketCategory, TicketStatus, TriageDecision } from '@/src/types/ticket';
-import { RotateCcw, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 export default function TicketFilters() {
   const router = useRouter();
@@ -88,56 +88,45 @@ export default function TicketFilters() {
     filters.triageDecision !== 'all' ||
     filters.slaStatus !== 'all';
 
-  return (
-    <div className="bg-card border border-border rounded-xl p-3 sm:p-4 mb-4 shadow-2xs space-y-3">
-      
-      {/* Search Bar + Clear button */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search tickets by ID, subject, customer, email, or company..."
-            className="w-full pl-9 pr-8 py-2 rounded-lg text-xs sm:text-sm bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => setSearchInput('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded"
-              title="Clear search"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+  const selectClass =
+    'w-full h-[35px] px-2.5 rounded-lg bg-card border border-border-ref text-foreground text-[13px] focus:ring-2 focus:ring-ring focus:outline-hidden transition-shadow cursor-pointer';
+  const labelClass = 'block text-[11px] font-medium text-text-secondary mb-1';
 
-        {isFiltered && (
+  return (
+    <div className="bg-card border border-border-ref rounded-[14px] p-3.5 sm:p-4 mb-4 shadow-card space-y-3.5">
+
+      {/* (A) Full-width search input */}
+      <div className="relative w-full">
+        <Search className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search tickets by ID, subject, customer, email, or company..."
+          className="w-full h-[39px] pl-9 pr-9 rounded-lg text-[13px] sm:text-sm bg-surface-search border border-border-ref text-foreground placeholder:text-text-secondary focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+        />
+        {searchInput && (
           <button
             type="button"
-            onClick={handleReset}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary/80 hover:bg-secondary border border-border transition-colors self-start sm:self-auto"
+            onClick={() => setSearchInput('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-foreground p-0.5 rounded cursor-pointer transition-colors"
+            title="Clear search"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Filters</span>
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Filter Select Controls */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-1 text-xs">
-        
+      {/* (B) Row of 5 labeled dropdowns + Clear Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+
         {/* Status */}
-        <div>
-          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-            Status
-          </label>
+        <div className="min-w-[150px] flex-1">
+          <label className={labelClass}>Status</label>
           <select
             value={filters.status}
             onChange={(e) => handleStatusChange(e.target.value as TicketStatus | 'all')}
-            className="w-full py-1.5 px-2.5 rounded-md bg-background border border-border text-foreground text-xs focus:ring-2 focus:ring-ring focus:outline-hidden"
+            className={selectClass}
           >
             <option value="all">All Statuses</option>
             <option value="open">Open</option>
@@ -147,14 +136,12 @@ export default function TicketFilters() {
         </div>
 
         {/* Priority */}
-        <div>
-          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-            Priority
-          </label>
+        <div className="min-w-[150px] flex-1">
+          <label className={labelClass}>Priority</label>
           <select
             value={filters.priority}
             onChange={(e) => handlePriorityChange(e.target.value as Priority | 'all')}
-            className="w-full py-1.5 px-2.5 rounded-md bg-background border border-border text-foreground text-xs focus:ring-2 focus:ring-ring focus:outline-hidden"
+            className={selectClass}
           >
             <option value="all">All Priorities</option>
             <option value="P0">P0 Urgent</option>
@@ -165,14 +152,12 @@ export default function TicketFilters() {
         </div>
 
         {/* Category */}
-        <div>
-          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-            Category
-          </label>
+        <div className="min-w-[150px] flex-1">
+          <label className={labelClass}>Category</label>
           <select
             value={filters.category}
             onChange={(e) => handleCategoryChange(e.target.value as TicketCategory | 'all')}
-            className="w-full py-1.5 px-2.5 rounded-md bg-background border border-border text-foreground text-xs focus:ring-2 focus:ring-ring focus:outline-hidden"
+            className={selectClass}
           >
             <option value="all">All Categories</option>
             <option value="technical">Technical</option>
@@ -185,14 +170,12 @@ export default function TicketFilters() {
         </div>
 
         {/* SLA Status */}
-        <div>
-          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-            SLA Status
-          </label>
+        <div className="min-w-[150px] flex-1">
+          <label className={labelClass}>SLA Status</label>
           <select
             value={filters.slaStatus}
             onChange={(e) => handleSlaChange(e.target.value as SlaStatus | 'all')}
-            className="w-full py-1.5 px-2.5 rounded-md bg-background border border-border text-foreground text-xs focus:ring-2 focus:ring-ring focus:outline-hidden"
+            className={selectClass}
           >
             <option value="all">All SLA Timers</option>
             <option value="late">Breached / Late</option>
@@ -202,14 +185,12 @@ export default function TicketFilters() {
         </div>
 
         {/* Triage Decision */}
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-            Triage Decision
-          </label>
+        <div className="min-w-[150px] flex-1">
+          <label className={labelClass}>Triage Decision</label>
           <select
             value={filters.triageDecision}
             onChange={(e) => handleTriageChange(e.target.value as TriageDecision | 'all')}
-            className="w-full py-1.5 px-2.5 rounded-md bg-background border border-border text-foreground text-xs focus:ring-2 focus:ring-ring focus:outline-hidden"
+            className={selectClass}
           >
             <option value="all">All Triage Types</option>
             <option value="automated">Automated Triage</option>
@@ -217,6 +198,17 @@ export default function TicketFilters() {
           </select>
         </div>
 
+        {/* Clear Filters (far right, only when filtered) */}
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="h-[35px] inline-flex items-center justify-center gap-1.5 px-3 rounded-lg text-xs font-medium text-text-secondary hover:text-foreground bg-secondary/80 hover:bg-secondary border border-border-ref transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Clear Filters</span>
+          </button>
+        )}
       </div>
     </div>
   );
