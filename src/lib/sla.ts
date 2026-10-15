@@ -68,3 +68,36 @@ export function formatRemainingSla(slaDeadline: string, now: Date = new Date()):
   const days = Math.floor(remainingHours / 24);
   return `${days}d ${remainingHours % 24}h left`;
 }
+
+/**
+ * Second-granularity SLA remaining formatter for the live per-second countdown.
+ * Examples: '3h 12m 05s left' / '45s left' / '2m 10s overdue' / '1d 4h 09m 03s left'.
+ * Does NOT touch SLA_TARGETS_MINUTES or calculateSlaStatus thresholds.
+ */
+export function formatRemainingSlaSeconds(slaDeadline: string, now: Date = new Date()): string {
+  const deadline = new Date(slaDeadline).getTime();
+  const diffMs = deadline - now.getTime();
+  const overdue = diffMs < 0;
+  const totalSeconds = Math.floor(Math.abs(diffMs) / 1000);
+
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const suffix = overdue ? 'overdue' : 'left';
+
+  let core: string;
+  if (days > 0) {
+    core = `${days}d ${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  } else if (hours > 0) {
+    core = `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  } else if (minutes > 0) {
+    core = `${minutes}m ${pad(seconds)}s`;
+  } else {
+    core = `${seconds}s`;
+  }
+
+  return `${core} ${suffix}`;
+}

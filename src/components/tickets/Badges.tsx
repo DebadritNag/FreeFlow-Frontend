@@ -2,13 +2,44 @@ import React from 'react';
 import { CustomerTier, Priority, SlaStatus, TicketCategory, TicketStatus } from '@/src/types/ticket';
 import { AlertCircle, AlertTriangle, Clock3 } from 'lucide-react';
 
+/**
+ * Visible amber flag appended to a badge when the ticket carried an
+ * invalid/unknown raw enum value that was safe-coerced for math/sorting
+ * (DECISION D1). `kind` controls the wording ('invalid' vs 'unknown').
+ */
+function RawValueFlag({ rawValue, kind = 'invalid' }: { rawValue: string; kind?: 'invalid' | 'unknown' }) {
+  return (
+    <span
+      title={`Original value "${rawValue}" is ${kind} and was coerced to a safe fallback`}
+      className="inline-flex items-center gap-0.5 ml-1 px-1 py-px rounded text-[10px] font-semibold bg-amber-surface text-warning border border-amber-border align-middle"
+    >
+      <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
+      <span>· {kind}</span>
+    </span>
+  );
+}
+
 interface PriorityBadgeProps {
   priority: Priority;
   className?: string;
   showIcon?: boolean;
+  /** Original raw value preserved when the source enum was invalid (DECISION D1). */
+  rawValue?: string;
 }
 
-export function PriorityBadge({ priority, className = '', showIcon = true }: PriorityBadgeProps) {
+const VALID_PRIORITIES: readonly string[] = ['P0', 'P1', 'P2', 'P3'];
+const VALID_STATUSES: readonly string[] = ['open', 'in_progress', 'resolved'];
+const VALID_CATEGORIES: readonly string[] = [
+  'billing',
+  'technical',
+  'account',
+  'feature_request',
+  'security',
+  'general',
+];
+const VALID_TIERS: readonly string[] = ['enterprise', 'business', 'pro', 'free'];
+
+export function PriorityBadge({ priority, className = '', showIcon = true, rawValue }: PriorityBadgeProps) {
   const styles: Record<Priority, { bg: string; text: string; border: string; label: string }> = {
     P0: {
       bg: 'bg-breached/10',
@@ -45,6 +76,7 @@ export function PriorityBadge({ priority, className = '', showIcon = true }: Pri
       {showIcon && priority === 'P0' && <AlertCircle className="w-3 h-3 flex-shrink-0" />}
       {showIcon && priority === 'P1' && <AlertTriangle className="w-3 h-3 text-warning flex-shrink-0" />}
       <span>{style.label}</span>
+      {rawValue && !VALID_PRIORITIES.includes(rawValue) && <RawValueFlag rawValue={rawValue} />}
     </span>
   );
 }
@@ -52,9 +84,10 @@ export function PriorityBadge({ priority, className = '', showIcon = true }: Pri
 interface StatusBadgeProps {
   status: TicketStatus;
   className?: string;
+  rawValue?: string;
 }
 
-export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
+export function StatusBadge({ status, className = '', rawValue }: StatusBadgeProps) {
   const styles: Record<TicketStatus, { bg: string; text: string; border: string; dot: string; label: string }> = {
     open: {
       bg: 'bg-surface-green',
@@ -87,6 +120,7 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
     >
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${style.dot}`} />
       <span>{style.label}</span>
+      {rawValue && !VALID_STATUSES.includes(rawValue) && <RawValueFlag rawValue={rawValue} />}
     </span>
   );
 }
@@ -133,7 +167,15 @@ export function SlaIndicator({ slaStatus, remainingText, className = '' }: SlaIn
   );
 }
 
-export function CategoryBadge({ category, className = '' }: { category: TicketCategory; className?: string }) {
+export function CategoryBadge({
+  category,
+  className = '',
+  rawValue,
+}: {
+  category: TicketCategory;
+  className?: string;
+  rawValue?: string;
+}) {
   const labels: Record<TicketCategory, string> = {
     technical: 'Technical',
     billing: 'Billing',
@@ -145,20 +187,33 @@ export function CategoryBadge({ category, className = '' }: { category: TicketCa
 
   return (
     <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs text-text-secondary bg-secondary border border-border-ref font-medium whitespace-nowrap flex-shrink-0 ${className}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs text-text-secondary bg-secondary border border-border-ref font-medium whitespace-nowrap flex-shrink-0 ${className}`}
     >
-      {labels[category] || category}
+      <span>{labels[category] || category}</span>
+      {rawValue && !VALID_CATEGORIES.includes(rawValue) && <RawValueFlag rawValue={rawValue} kind="unknown" />}
     </span>
   );
 }
 
-export function CustomerTierBadge({ tier, className = '' }: { tier: CustomerTier; className?: string }) {
+export function CustomerTierBadge({
+  tier,
+  className = '',
+  rawValue,
+}: {
+  tier: CustomerTier;
+  className?: string;
+  rawValue?: string;
+}) {
+  const flag =
+    rawValue && !VALID_TIERS.includes(rawValue) ? <RawValueFlag rawValue={rawValue} kind="unknown" /> : null;
+
   if (tier === 'enterprise') {
     return (
       <span
         className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-green text-accent-foreground border border-surface-green-hover tracking-wide uppercase flex-shrink-0 ${className}`}
       >
         Enterprise
+        {flag}
       </span>
     );
   }
@@ -169,6 +224,7 @@ export function CustomerTierBadge({ tier, className = '' }: { tier: CustomerTier
         className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-text-secondary border border-border-ref flex-shrink-0 ${className}`}
       >
         Business
+        {flag}
       </span>
     );
   }
@@ -178,6 +234,7 @@ export function CustomerTierBadge({ tier, className = '' }: { tier: CustomerTier
       className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium text-text-secondary bg-secondary/60 border border-border-ref flex-shrink-0 ${className}`}
     >
       {tier.toUpperCase()}
+      {flag}
     </span>
   );
 }

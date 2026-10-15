@@ -38,6 +38,8 @@ export interface TicketsState {
   totalPages: number;
   metrics: TicketMetrics | null;
   cursor: string;
+  hasMore: boolean;
+  loadingMore: boolean;
   newTicketsCount: number;
   newlyArrivedIds: string[];
   currentTicket: Ticket | null;
@@ -71,6 +73,8 @@ const initialState: TicketsState = {
   totalPages: 1,
   metrics: null,
   cursor: '',
+  hasMore: false,
+  loadingMore: false,
   newTicketsCount: 0,
   newlyArrivedIds: [],
   currentTicket: null,
@@ -121,7 +125,46 @@ export const ticketsSlice = createSlice({
       if (!state.cursor || action.payload.cursor) {
         state.cursor = action.payload.cursor;
       }
+      state.hasMore = action.payload.page < action.payload.totalPages;
+      state.loadingMore = false;
       state.loading = false;
+      state.error = null;
+    },
+    setLoadingMore: (state, action: PayloadAction<boolean>) => {
+      state.loadingMore = action.payload;
+    },
+    appendPaginatedTickets: (
+      state,
+      action: PayloadAction<{
+        tickets: Ticket[];
+        totalCount: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+        metrics: TicketMetrics;
+        cursor: string;
+      }>
+    ) => {
+      // Concatenate the incoming page onto the existing list, deduped by id
+      // (keep first occurrence / stable order) so a brand-new ticket counted by
+      // the banner cannot cause a duplicate when it later lands in a fetched page.
+      const existingIds = new Set(state.items.map((t) => t.id));
+      for (const incoming of action.payload.tickets) {
+        if (!existingIds.has(incoming.id)) {
+          state.items.push(incoming);
+          existingIds.add(incoming.id);
+        }
+      }
+      state.totalCount = action.payload.totalCount;
+      state.page = action.payload.page;
+      state.pageSize = action.payload.pageSize;
+      state.totalPages = action.payload.totalPages;
+      state.metrics = action.payload.metrics;
+      if (action.payload.cursor) {
+        state.cursor = action.payload.cursor;
+      }
+      state.hasMore = action.payload.page < action.payload.totalPages;
+      state.loadingMore = false;
       state.error = null;
     },
     setCurrentTicket: (state, action: PayloadAction<Ticket | null>) => {
@@ -252,6 +295,8 @@ export const {
   setActionLoading,
   setError,
   setPaginatedTickets,
+  setLoadingMore,
+  appendPaginatedTickets,
   setCurrentTicket,
   updateTicketLocally,
   optimisticClaimTicket,

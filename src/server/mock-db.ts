@@ -645,6 +645,7 @@ export class MockDatabase {
     let p1Count = 0;
     let p2Count = 0;
     let p3Count = 0;
+    const myTicketsCountByAgent: Record<string, number> = {};
 
     for (const t of this.tickets) {
       if (t.status === 'open') openTickets++;
@@ -652,6 +653,11 @@ export class MockDatabase {
       else if (t.status === 'resolved') resolvedTickets++;
 
       if (t.triageDecision === 'manual_review') manualReviewTickets++;
+
+      if (t.assignee) {
+        myTicketsCountByAgent[t.assignee.id] =
+          (myTicketsCountByAgent[t.assignee.id] || 0) + 1;
+      }
 
       if (t.priority === 'P0') p0Count++;
       else if (t.priority === 'P1') p1Count++;
@@ -679,6 +685,7 @@ export class MockDatabase {
       p1Count,
       p2Count,
       p3Count,
+      myTicketsCountByAgent,
     };
   }
 

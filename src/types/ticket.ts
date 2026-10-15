@@ -95,6 +95,8 @@ export interface TicketMetrics {
   p1Count: number;
   p2Count: number;
   p3Count: number;
+  // Count of tickets assigned to each agent across the FULL dataset (keyed by agent id).
+  myTicketsCountByAgent: Record<string, number>;
 }
 
 export interface TicketFilterState {

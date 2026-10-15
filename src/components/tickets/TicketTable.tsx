@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
@@ -10,15 +10,14 @@ import {
   updateTicketLocally,
 } from '@/src/store/ticketsSlice';
 import { Ticket } from '@/src/types/ticket';
-import { calculateSlaStatus, formatRemainingSla } from '@/src/lib/sla';
 import { claimTicketApi } from '@/src/lib/api-client';
 import {
   CategoryBadge,
   CustomerTierBadge,
   PriorityBadge,
-  SlaIndicator,
   StatusBadge,
 } from './Badges';
+import CountdownCell from './CountdownCell';
 import { toast } from 'sonner';
 import {
   AlertCircle,
@@ -43,6 +42,14 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
 
   // Net-new LOCAL selection state (no Redux reducers for selection).
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Single 1-second ticker per page: one shared `now` fed into every memoized
+  // CountdownCell so only those cells re-render each tick (row cells stay stable).
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const allSelected = items.length > 0 && selectedIds.size === items.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -192,8 +199,6 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
     );
   }
 
-  const now = new Date();
-
   const checkboxClass =
     'w-4 h-4 rounded border-border-ref text-primary accent-primary cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-ring';
 
@@ -250,8 +255,6 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
           </thead>
           <tbody className="divide-y divide-border-ref text-xs">
             {items.map((ticket) => {
-              const slaStatus = calculateSlaStatus(ticket, now);
-              const remainingSla = formatRemainingSla(ticket.slaDeadline, now);
               const isAssignedToMe = ticket.assignee?.id === activeAgent.id;
               const isSelected = selectedIds.has(ticket.id);
 
@@ -284,7 +287,10 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                   <td className="px-4 min-w-0">
                     <div className="flex flex-col justify-center min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[12px] font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                        <span
+                          dir="auto"
+                          className="text-[12px] font-medium text-foreground truncate group-hover:text-primary transition-colors"
+                        >
                           {ticket.subject}
                         </span>
                         {ticket.triageDecision === 'manual_review' && (
@@ -309,24 +315,24 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                           </>
                         )}
                         <span>•</span>
-                        <CustomerTierBadge tier={ticket.customer.tier} />
+                        <CustomerTierBadge tier={ticket.customer.tier} rawValue={ticket.rawTier} />
                       </div>
                     </div>
                   </td>
 
                   {/* 4 Priority */}
                   <td className="px-3 whitespace-nowrap">
-                    <PriorityBadge priority={ticket.priority} />
+                    <PriorityBadge priority={ticket.priority} rawValue={ticket.rawPriority} />
                   </td>
 
                   {/* 5 Status */}
                   <td className="px-3 whitespace-nowrap">
-                    <StatusBadge status={ticket.status} />
+                    <StatusBadge status={ticket.status} rawValue={ticket.rawStatus} />
                   </td>
 
                   {/* 6 Category */}
                   <td className="px-3 whitespace-nowrap">
-                    <CategoryBadge category={ticket.category} />
+                    <CategoryBadge category={ticket.category} rawValue={ticket.rawCategory} />
                   </td>
 
                   {/* 7 Assignee — avatar + name, or compact Claim pill */}
@@ -361,9 +367,15 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                     )}
                   </td>
 
-                  {/* 8 SLA Target */}
+                  {/* 8 SLA Target — row-isolated per-second countdown */}
                   <td className="px-3 whitespace-nowrap">
-                    <SlaIndicator slaStatus={slaStatus} remainingText={remainingSla} />
+                    <CountdownCell
+                      slaDeadline={ticket.slaDeadline}
+                      slaTargetMinutes={ticket.slaTargetMinutes}
+                      status={ticket.status}
+                      priority={ticket.priority}
+                      now={now}
+                    />
                   </td>
 
                   {/* 9 Action — ChevronRight link to detail */}
@@ -387,8 +399,6 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
       {/* Mobile Card View (optimized down to 375px without horizontal overflow) */}
       <div className="lg:hidden divide-y divide-border-ref">
         {items.map((ticket) => {
-          const slaStatus = calculateSlaStatus(ticket, now);
-          const remainingSla = formatRemainingSla(ticket.slaDeadline, now);
           const isAssignedToMe = ticket.assignee?.id === activeAgent.id;
           const isSelected = selectedIds.has(ticket.id);
 
@@ -414,7 +424,7 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                   <span className="font-mono text-[13px] font-semibold text-primary">
                     {ticket.id}
                   </span>
-                  <PriorityBadge priority={ticket.priority} showIcon={false} />
+                  <PriorityBadge priority={ticket.priority} rawValue={ticket.rawPriority} showIcon={false} />
                   {ticket.triageDecision === 'manual_review' && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-surface text-warning border border-amber-border flex-shrink-0">
                       <ShieldAlert className="w-2.5 h-2.5" />
@@ -422,12 +432,18 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                     </span>
                   )}
                 </div>
-                <SlaIndicator slaStatus={slaStatus} remainingText={remainingSla} />
+                <CountdownCell
+                  slaDeadline={ticket.slaDeadline}
+                  slaTargetMinutes={ticket.slaTargetMinutes}
+                  status={ticket.status}
+                  priority={ticket.priority}
+                  now={now}
+                />
               </div>
 
               {/* Subject */}
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
+                <h4 dir="auto" className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
                   {ticket.subject}
                 </h4>
               </div>
@@ -444,14 +460,14 @@ export default function TicketTable({ onRetry }: TicketTableProps) {
                   </>
                 )}
                 <span>•</span>
-                <CustomerTierBadge tier={ticket.customer.tier} />
+                <CustomerTierBadge tier={ticket.customer.tier} rawValue={ticket.rawTier} />
                 <span>•</span>
-                <CategoryBadge category={ticket.category} />
+                <CategoryBadge category={ticket.category} rawValue={ticket.rawCategory} />
               </div>
 
               {/* Footer: Status, Assignee, Claim */}
               <div className="flex items-center justify-between pt-1 border-t border-border-ref/60 text-xs">
-                <StatusBadge status={ticket.status} />
+                <StatusBadge status={ticket.status} rawValue={ticket.rawStatus} />
 
                 <div className="flex items-center gap-2">
                   {ticket.assignee ? (

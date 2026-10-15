@@ -4,10 +4,12 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import {
+  appendPaginatedTickets,
   handleCursorUpdates,
   setError,
   setFilters,
   setLoading,
+  setLoadingMore,
   setPaginatedTickets,
 } from '@/src/store/ticketsSlice';
 import { fetchTickets, pollUpdatesApi } from '@/src/lib/api-client';
@@ -16,20 +18,23 @@ import Sidebar from '@/src/components/navigation/Sidebar';
 import MetricsSummary from '@/src/components/tickets/MetricsSummary';
 import TicketFilters from '@/src/components/tickets/TicketFilters';
 import TicketTable from '@/src/components/tickets/TicketTable';
-import Pagination from '@/src/components/tickets/Pagination';
 import NewTicketsBanner from '@/src/components/tickets/NewTicketsBanner';
 import { Priority, SlaStatus, TicketCategory, TicketFilterState, TicketStatus, TriageDecision } from '@/src/types/ticket';
-import { Clock3, RefreshCw } from 'lucide-react';
+import { Clock3, Loader2, RefreshCw } from 'lucide-react';
 import { Suspense } from 'react';
 
 function TicketsContent() {
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
-  const { filters, cursor, loading } = useAppSelector(
+  const { filters, cursor, loading, loadingMore, hasMore, items, totalCount } = useAppSelector(
     (state) => state.tickets
   );
 
   const initialSyncDone = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Latest infinite-scroll state for the IntersectionObserver callback (avoids
+  // re-creating the observer on every state change).
+  const loadMoreStateRef = useRef({ hasMore, loadingMore, loading, page: filters.page });
 
   // Sync initial URL params to Redux filter state on mount
   useEffect(() => {
@@ -52,11 +57,12 @@ function TicketsContent() {
     }
   }, [searchParams, dispatch]);
 
-  // Load tickets function
+  // Reset + REPLACE loader: always fetches page 1 for the current filters and
+  // replaces the list. Used on mount, on filter change, and on manual refresh.
   const loadTickets = useCallback(async () => {
     dispatch(setLoading(true));
     try {
-      const data = await fetchTickets(filters);
+      const data = await fetchTickets({ ...filters, page: 1 });
       dispatch(setPaginatedTickets(data));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error loading tickets. Retrying suggested.';
@@ -64,10 +70,66 @@ function TicketsContent() {
     }
   }, [filters, dispatch]);
 
-  // Trigger load whenever filters change
+  // Filter signature EXCLUDING page/pageSize so that only real filter changes
+  // trigger a reset+replace (page changes are driven by infinite scroll, not here).
+  const filterSignature = JSON.stringify({
+    search: filters.search,
+    status: filters.status,
+    priority: filters.priority,
+    category: filters.category,
+    triageDecision: filters.triageDecision,
+    assigneeId: filters.assigneeId,
+    slaStatus: filters.slaStatus,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
+    pageSize: filters.pageSize,
+  });
+
+  // Reset to page 1 + REPLACE items whenever the filter signature changes.
   useEffect(() => {
     loadTickets();
-  }, [loadTickets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSignature]);
+
+  // Append the NEXT page onto the existing list (infinite scroll).
+  const loadMore = useCallback(async () => {
+    const nextPage = loadMoreStateRef.current.page + 1;
+    dispatch(setLoadingMore(true));
+    dispatch(setFilters({ page: nextPage }));
+    try {
+      const data = await fetchTickets({ ...filters, page: nextPage });
+      dispatch(appendPaginatedTickets(data));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error loading more tickets.';
+      dispatch(setError(msg));
+    }
+  }, [filters, dispatch]);
+
+  // Keep the observer's view of the latest infinite-scroll state current.
+  useEffect(() => {
+    loadMoreStateRef.current = { hasMore, loadingMore, loading, page: filters.page };
+  }, [hasMore, loadingMore, loading, filters.page]);
+
+  // IntersectionObserver sentinel: when the bottom sentinel scrolls into view and
+  // there is more to load (and nothing is already loading), fetch the next page.
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const s = loadMoreStateRef.current;
+        if (entry.isIntersecting && s.hasMore && !s.loadingMore && !s.loading) {
+          loadMore();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   // Cursor-based Background Polling Loop (every 12 seconds)
   useEffect(() => {
@@ -157,8 +219,27 @@ function TicketsContent() {
           {/* Main Ticket Table / Card List */}
           <TicketTable onRetry={loadTickets} />
 
-          {/* Pagination & Row Sizer */}
-          <Pagination />
+          {/* Infinite-scroll footer: sentinel + loading-more spinner + end marker.
+              Pagination has been retired from /tickets (DECISION D2); the Pagination
+              component file is left in the repo, unused. */}
+          {items.length > 0 && (
+            <div className="mt-2">
+              <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
+
+              {loadingMore && (
+                <div className="flex items-center justify-center gap-2 py-5 text-xs text-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span>Loading more tickets…</span>
+                </div>
+              )}
+
+              {!hasMore && !loadingMore && (
+                <div className="py-5 text-center text-xs text-text-secondary tabular-nums">
+                  Showing all {totalCount.toLocaleString()} tickets.
+                </div>
+              )}
+            </div>
+          )}
 
         </main>
       </div>

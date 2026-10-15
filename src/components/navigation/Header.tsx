@@ -14,6 +14,7 @@ import {
   X,
   Search,
   Bell,
+  Inbox,
 } from 'lucide-react';
 
 export default function Header() {
@@ -27,6 +28,13 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isReviewActive = pathname.startsWith('/review');
+
+  // Header counts sourced from full-dataset Redux metrics (NOT the current page):
+  // myTicketsCount = tickets assigned to the active agent; toReviewCount = manual_review total.
+  // Because metrics come from computeMetrics() over the entire dataset, these stay correct
+  // after a successful claim, after a rollback, after switching agents, and during live updates.
+  const myTicketsCount = metrics?.myTicketsCountByAgent[activeAgent.id] ?? 0;
+  const toReviewCount = metrics?.manualReviewTickets ?? 0;
 
   const handleSelectAgent = (agent: Agent) => {
     dispatch(setActiveAgent(agent));
@@ -57,6 +65,25 @@ export default function Header() {
 
         {/* Right cluster */}
         <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Desktop header counters — full-dataset metrics (My tickets / To review) */}
+          <div className="hidden md:flex items-center gap-2">
+            <span
+              title="Tickets assigned to the active agent (full dataset)"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface-green text-[12px] font-medium text-[#246B4B] tabular-nums"
+            >
+              <Inbox className="w-3.5 h-3.5" />
+              <span>My tickets ({myTicketsCount})</span>
+            </span>
+            <Link
+              href="/review"
+              title="Tickets flagged for manual review (full dataset)"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-surface border border-amber-border text-[12px] font-medium text-warning tabular-nums hover:bg-amber-surface/80 transition-colors duration-200 cursor-pointer"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>To review ({toReviewCount})</span>
+            </Link>
+          </div>
+
           {/* Live-sync indicator restyled as green "Synced" pill
               (same source as the previous Radio indicator: real-time cursor polling) */}
           <div
@@ -205,6 +232,21 @@ export default function Header() {
       {/* Mobile Navigation Drawer — keeps /review reachable on small screens */}
       {mobileMenuOpen && (
         <div className="md:hidden px-4 sm:px-6 py-3 border-t border-border space-y-1 animate-in fade-in duration-100">
+          {/* Mobile: My tickets counter (full-dataset metrics) */}
+          <Link
+            href="/tickets"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-text-secondary hover:bg-secondary/60 hover:text-foreground transition-colors duration-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Inbox className="w-4 h-4 text-primary" />
+              <span>My tickets</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-green border border-surface-green-hover text-[#246B4B] tabular-nums">
+              {myTicketsCount}
+            </span>
+          </Link>
+
           <Link
             href="/review"
             onClick={() => setMobileMenuOpen(false)}
@@ -216,13 +258,11 @@ export default function Header() {
           >
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-warning" />
-              <span>Manual Triage Queue</span>
+              <span>To review</span>
             </div>
-            {metrics && metrics.manualReviewTickets > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-surface border border-amber-border text-warning tabular-nums">
-                {metrics.manualReviewTickets}
-              </span>
-            )}
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-surface border border-amber-border text-warning tabular-nums">
+              {toReviewCount}
+            </span>
           </Link>
         </div>
       )}

@@ -11,9 +11,8 @@ import {
   CategoryBadge,
   CustomerTierBadge,
   PriorityBadge,
-  SlaIndicator,
 } from '@/src/components/tickets/Badges';
-import { calculateSlaStatus, formatRemainingSla } from '@/src/lib/sla';
+import CountdownCell from '@/src/components/tickets/CountdownCell';
 import { Priority, Ticket, TicketCategory } from '@/src/types/ticket';
 import { toast } from 'sonner';
 import {
@@ -37,6 +36,13 @@ export default function ReviewQueuePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+
+  // Single per-second ticker for the review-card SLA countdowns.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Local draft triage overrides per ticket: { [ticketId]: { priority: Priority; category: TicketCategory } }
   const [drafts, setDrafts] = useState<Record<string, { priority: Priority; category: TicketCategory }>>({});
@@ -161,8 +167,6 @@ export default function ReviewQueuePage() {
     }
   };
 
-  const now = new Date();
-
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar />
@@ -273,8 +277,6 @@ export default function ReviewQueuePage() {
           {!loading && !error && tickets.length > 0 && (
             <div className="space-y-5">
               {tickets.map((ticket) => {
-                const slaStatus = calculateSlaStatus(ticket, now);
-                const remainingSla = formatRemainingSla(ticket.slaDeadline, now);
                 const isEnterprise = ticket.customer.tier === 'enterprise';
                 const draft = drafts[ticket.id] || { priority: ticket.priority, category: ticket.category };
                 const isResolving = resolvingId === ticket.id;
@@ -290,13 +292,19 @@ export default function ReviewQueuePage() {
                         <span className="text-[13px] font-semibold text-[#246B4B]">
                           {ticket.id}
                         </span>
-                        <CustomerTierBadge tier={ticket.customer.tier} />
-                        <CategoryBadge category={ticket.category} />
-                        <PriorityBadge priority={ticket.priority} />
+                        <CustomerTierBadge tier={ticket.customer.tier} rawValue={ticket.rawTier} />
+                        <CategoryBadge category={ticket.category} rawValue={ticket.rawCategory} />
+                        <PriorityBadge priority={ticket.priority} rawValue={ticket.rawPriority} />
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <SlaIndicator slaStatus={slaStatus} remainingText={remainingSla} />
+                        <CountdownCell
+                          slaDeadline={ticket.slaDeadline}
+                          slaTargetMinutes={ticket.slaTargetMinutes}
+                          status={ticket.status}
+                          priority={ticket.priority}
+                          now={now}
+                        />
                         <Link
                           href={`/tickets/${ticket.id}`}
                           className="inline-flex items-center gap-1 text-[13px] text-[#246B4B] hover:underline font-medium cursor-pointer"
@@ -309,7 +317,7 @@ export default function ReviewQueuePage() {
 
                     {/* Subject and Customer */}
                     <div className="mt-4">
-                      <h3 className="text-[17px] sm:text-[18px] font-semibold text-[#202522] leading-snug">
+                      <h3 dir="auto" className="text-[17px] sm:text-[18px] font-semibold text-[#202522] leading-snug">
                         {ticket.subject}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2 text-[13px] text-text-secondary mt-1.5">
@@ -360,6 +368,12 @@ export default function ReviewQueuePage() {
                           <p className="text-text-secondary">
                             Recommended Category:{' '}
                             <strong className="font-semibold text-[#202522]">{ticket.aiSuggestedCategory}</strong>
+                          </p>
+                        )}
+                        {ticket.summary && (
+                          <p dir="auto" className="text-text-secondary leading-[1.5] break-words pt-0.5">
+                            <span className="font-semibold text-[#202522]">Summary: </span>
+                            {ticket.summary}
                           </p>
                         )}
                       </div>

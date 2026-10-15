@@ -13,6 +13,8 @@ import {
 import {
   claimTicketApi,
   fetchTicketById,
+  pollUpdatesSinceApi,
+  retriageTicketApi,
   unclaimTicketApi,
   updateStatusApi,
   updateTriageApi,
@@ -24,16 +26,16 @@ import {
   CategoryBadge,
   CustomerTierBadge,
   PriorityBadge,
-  SlaIndicator,
   StatusBadge,
 } from '@/src/components/tickets/Badges';
-import { calculateSlaStatus, formatRemainingSla } from '@/src/lib/sla';
+import CountdownCell from '@/src/components/tickets/CountdownCell';
 import { isValidStatusTransition } from '@/src/lib/ticket-rules';
 import { Priority, TicketCategory, TicketStatus } from '@/src/types/ticket';
 import { toast } from 'sonner';
 import {
   AlertCircle,
   ArrowLeft,
+  Bot,
   Building,
   Download,
   FileText,
@@ -41,6 +43,7 @@ import {
   RefreshCw,
   ShieldAlert,
   SlidersHorizontal,
+  Sparkles,
   User,
   UserCheck,
   UserMinus,
@@ -63,6 +66,16 @@ export default function TicketDetailPage() {
   // Editable fields in detail view
   const [selectedPriority, setSelectedPriority] = useState<Priority>('P2');
   const [selectedCategory, setSelectedCategory] = useState<TicketCategory>('general');
+
+  // Single per-second ticker feeding the SLA countdown on the detail page.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Re-run AI (retriage) in-flight state.
+  const [retriaging, setRetriaging] = useState(false);
 
   const loadTicket = useCallback(async () => {
     setLoading(true);
@@ -105,6 +118,38 @@ export default function TicketDetailPage() {
     doFetch();
     return () => {
       isCancelled = true;
+    };
+  }, [ticketId, dispatch]);
+
+  // 10s live poll: reflects a concurrent claim/update to THIS ticket by another
+  // agent (e.g. background mutation or another agent claiming it). Uses the
+  // timestamp-based ?since= contract; cleaned up on unmount.
+  useEffect(() => {
+    if (!ticketId) return;
+    let since = new Date().toISOString();
+    let cancelled = false;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await pollUpdatesSinceApi(since);
+        if (data.timestamp) since = data.timestamp;
+        if (cancelled) return;
+        const match = data.updatedTickets?.find((t) => t.id === ticketId);
+        if (match) {
+          dispatch(setCurrentTicket(match));
+          dispatch(updateTicketLocally(match));
+          toast.info(`Ticket #${ticketId} was updated by live sync.`, {
+            id: `live-${ticketId}`,
+          });
+        }
+      } catch {
+        // Silent polling error; retried next interval.
+      }
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
   }, [ticketId, dispatch]);
 
@@ -164,9 +209,6 @@ export default function TicketDetailPage() {
     );
   }
 
-  const now = new Date();
-  const slaStatus = calculateSlaStatus(currentTicket, now);
-  const remainingSla = formatRemainingSla(currentTicket.slaDeadline, now);
   const isAssignedToActive = currentTicket.assignee?.id === activeAgent.id;
   const isEnterprise = currentTicket.customer.tier === 'enterprise';
 
@@ -316,6 +358,29 @@ export default function TicketDetailPage() {
     }
   };
 
+  // 4. Re-run AI (retriage) Handler — calls the browser-keyed retriage endpoint.
+  const handleRetriage = async () => {
+    if (!currentTicket) return;
+    setRetriaging(true);
+    toast.loading(`Re-running AI triage for #${currentTicket.id}...`, { id: 'retriage-action' });
+
+    try {
+      const res = await retriageTicketApi(currentTicket.id);
+      if (res.success && res.ticket) {
+        dispatch(setCurrentTicket(res.ticket));
+        dispatch(updateTicketLocally(res.ticket));
+        setSelectedPriority(res.ticket.priority);
+        setSelectedCategory(res.ticket.category);
+        toast.success(`AI triage updated for #${currentTicket.id}.`, { id: 'retriage-action' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Re-run AI failed.';
+      toast.error(msg, { id: 'retriage-action' });
+    } finally {
+      setRetriaging(false);
+    }
+  };
+
   // Shared card chrome for the warm reference palette
   const cardClass =
     'bg-card border border-border-ref rounded-xl shadow-card';
@@ -356,13 +421,16 @@ export default function TicketDetailPage() {
                   <span className="text-[13px] font-semibold text-foreground">
                     {currentTicket.id}
                   </span>
-                  <PriorityBadge priority={currentTicket.priority} />
-                  <StatusBadge status={currentTicket.status} />
-                  <CategoryBadge category={currentTicket.category} />
-                  <CustomerTierBadge tier={currentTicket.customer.tier} />
+                  <PriorityBadge priority={currentTicket.priority} rawValue={currentTicket.rawPriority} />
+                  <StatusBadge status={currentTicket.status} rawValue={currentTicket.rawStatus} />
+                  <CategoryBadge category={currentTicket.category} rawValue={currentTicket.rawCategory} />
+                  <CustomerTierBadge tier={currentTicket.customer.tier} rawValue={currentTicket.rawTier} />
                 </div>
 
-                <h1 className="text-[22px] sm:text-[24px] font-bold text-foreground leading-[1.25] break-words">
+                <h1
+                  dir="auto"
+                  className="text-[22px] sm:text-[24px] font-bold text-foreground leading-[1.25] break-words"
+                >
                   {currentTicket.subject}
                 </h1>
 
@@ -477,8 +545,12 @@ export default function TicketDetailPage() {
                   <CustomerTierBadge tier={currentTicket.customer.tier} />
                 </div>
 
-                {/* CRITICAL: Safe Plain Text Rendering. NO dangerouslySetInnerHTML */}
-                <div className="text-[14px] text-foreground leading-[1.65] whitespace-pre-wrap font-sans break-words bg-surface-search p-4 rounded-[11px] border border-border-ref">
+                {/* CRITICAL: Safe Plain Text Rendering. NO dangerouslySetInnerHTML.
+                    dir="auto" so RTL (e.g. T-2007 Arabic) content aligns correctly. */}
+                <div
+                  dir="auto"
+                  className="text-[14px] text-foreground leading-[1.65] whitespace-pre-wrap font-sans break-words bg-surface-search p-4 rounded-[11px] border border-border-ref"
+                >
                   {currentTicket.description}
                 </div>
 
@@ -601,6 +673,79 @@ export default function TicketDetailPage() {
                 </button>
               </div>
 
+              {/* AI Triage card — summary + decision + reason + Re-run AI, with
+                  final-vs-AI priority shown when they differ. */}
+              <div className={`${cardClass} p-5 sm:p-6`}>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-[18px] h-[18px] text-primary" />
+                    <h3 className="text-[14px] font-semibold text-foreground">
+                      AI Triage
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRetriage}
+                    disabled={retriaging}
+                    title="Re-run the AI triage for this ticket"
+                    className="inline-flex items-center gap-1.5 h-[36px] px-3.5 rounded-[9px] bg-primary text-primary-foreground font-semibold text-[13px] hover:bg-primary-hover transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${retriaging ? 'animate-spin' : ''}`} />
+                    <span>{retriaging ? 'Re-running…' : 'Re-run AI'}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-[13px]">
+                  {/* Summary (plain text, already sanitized server-side) */}
+                  <div>
+                    <p className="text-[12px] font-semibold text-text-secondary uppercase tracking-[0.06em] mb-1">
+                      AI Summary
+                    </p>
+                    {currentTicket.summary ? (
+                      <p dir="auto" className="text-foreground leading-[1.6] whitespace-pre-wrap break-words">
+                        {currentTicket.summary}
+                      </p>
+                    ) : (
+                      <p className="text-text-secondary italic">
+                        No AI summary yet. Use Re-run AI to generate one.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* AI decision (triage routing) */}
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                    <span className="text-text-secondary">AI Decision:</span>
+                    <span className="font-semibold text-foreground">
+                      {currentTicket.triageDecision === 'manual_review' ? 'Manual review' : 'Automated'}
+                    </span>
+                  </div>
+
+                  {/* Final vs AI-suggested priority: show BOTH only when they differ. */}
+                  {currentTicket.aiPriority && currentTicket.aiPriority !== currentTicket.priority ? (
+                    <div className="p-3 rounded-[10px] bg-surface-search border border-border-ref space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-text-secondary">Final:</span>
+                        <PriorityBadge priority={currentTicket.priority} />
+                        <span className="text-text-secondary">AI-suggested:</span>
+                        <PriorityBadge priority={currentTicket.aiPriority} />
+                      </div>
+                      {currentTicket.reviewReason && (
+                        <p dir="auto" className="text-[12px] text-foreground leading-[1.5] break-words">
+                          <strong>Reason:</strong> {currentTicket.reviewReason}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    currentTicket.reviewReason && (
+                      <p dir="auto" className="text-[12px] text-foreground leading-[1.5] break-words">
+                        <strong>AI Reason:</strong> {currentTicket.reviewReason}
+                      </p>
+                    )
+                  )}
+                </div>
+              </div>
+
               {/* Additional Notes card — presentational placeholder: no notes field exists on the Ticket model */}
               <div className={`${cardClass} p-5 sm:p-6`}>
                 <div className="flex items-center gap-2 mb-4">
@@ -685,7 +830,13 @@ export default function TicketDetailPage() {
                 <div className="space-y-3 text-[12px] mt-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-text-secondary">SLA Status</span>
-                    <SlaIndicator slaStatus={slaStatus} remainingText={remainingSla} />
+                    <CountdownCell
+                      slaDeadline={currentTicket.slaDeadline}
+                      slaTargetMinutes={currentTicket.slaTargetMinutes}
+                      status={currentTicket.status}
+                      priority={currentTicket.priority}
+                      now={now}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
