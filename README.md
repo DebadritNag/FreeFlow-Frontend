@@ -41,6 +41,27 @@ npm run build
 
 ---
 
+## Environment variables
+
+The app runs end-to-end with no external services. The only configuration is the pair of keys that gate the "Re-run AI" / retriage endpoint. Copy the example file and (optionally) adjust the values:
+
+```bash
+cp .env.local.example .env.local    # macOS / Linux
+# Windows PowerShell:
+copy .env.local.example .env.local
+```
+
+| Variable | Scope | Purpose |
+|---|---|---|
+| `TRIAGE_API_KEY` | **Server-only secret** | Validated by `POST /api/tickets/[id]/retriage`. The request must present a matching key via the `x-triage-api-key` header (or `Authorization: Bearer <key>`). If this is **unset**, or the presented key does **not** match, the endpoint returns **401** (the two cases are indistinguishable by design). Never shipped to the browser. |
+| `NEXT_PUBLIC_TRIAGE_API_KEY` | **Browser-exposed** | The copy the client wrapper (`retriageTicketApi`) sends when the browser "Re-run AI" button calls the retriage endpoint. Keep it equal to `TRIAGE_API_KEY` in local/dev. |
+
+> ⚠️ **Security caveat.** `NEXT_PUBLIC_*` values are inlined into the client JavaScript bundle and are therefore visible to anyone using the app. `NEXT_PUBLIC_TRIAGE_API_KEY` is **intentionally browser-exposed for this exercise** and must never hold a real production secret. See [`DECISIONS.md`](DECISIONS.md) (D4 and the NEXT_PUBLIC caveat) for the full rationale and how a production system would proxy the call server-side instead.
+
+If no `.env.local` is created, the app still runs; the retriage endpoint simply returns 401 for every request (and the "Re-run AI" button surfaces that error).
+
+---
+
 ## Tech stack
 
 - **Framework**: Next.js 16 (App Router) with React 19
@@ -89,8 +110,10 @@ Every page shares one consistent shell:
 ### Manual Triage Review Queue — `/review`
 
 - Review workspace filtering tickets flagged `triageDecision: 'manual_review'`.
-- Each card shows the human-review reason, the AI-suggested priority and category with a confidence score, and Approve Priority / Approve Category controls.
-- **Approve & Route** applies the decision and releases the ticket to the general support pool, enforcing the same enterprise priority rule.
+- Each card shows the human-review reason, the AI triage assessment (sanitized plain-text **summary**, decision, and reason), the AI-suggested priority/category with a confidence score, and Approve Priority / Approve Category controls. When the final priority differs from the AI-suggested `aiPriority`, **both** are shown side by side with the reason.
+- **Written-reason workflow**: accepting the AI suggestion as-is needs no reason, but changing the priority or category **requires** a written reason of at least 10 characters. Inline validation shows an error for empty/too-short reasons and the **Approve & Route** button stays disabled until the entry is valid; the supplied reason is sent as the ticket's `triageReason`.
+- **Approve & Route** applies the decision and releases the ticket to the general support pool, enforcing the same enterprise priority rule (client guard + server re-check). Handled tickets leave the queue immediately.
+- **Live queue**: the page polls every 10 seconds — newly flagged `manual_review` tickets surface via a banner, and tickets already handled stay gone.
 
 ---
 
@@ -191,6 +214,6 @@ freeflow-support-desk/
 
 ## Notes
 
-- All data is in-memory and resets on server restart; there are no external dependencies or secrets to configure.
+- All data is in-memory and resets on server restart; there are no external services or databases to run. The only configuration is the optional retriage key pair described under [Environment variables](#environment-variables) — the app runs without it (the retriage endpoint returns 401 until the keys are set).
 - The mock API simulates realistic latency and occasional transient errors to exercise loading, error, and retry states.
 - See [`DECISIONS.md`](DECISIONS.md) for the architectural and UX rationale behind the implementation.
