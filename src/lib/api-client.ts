@@ -163,3 +163,41 @@ export async function pollUpdatesApi(cursor: string): Promise<CursorUpdatesRespo
   }
   return res.json();
 }
+
+/**
+ * Timestamp-based polling. Calls GET /api/tickets/updates?since=<ISO> and
+ * returns the same { updatedTickets, newCursor, timestamp } shape as the
+ * cursor-based wrapper.
+ */
+export async function pollUpdatesSinceApi(since: string): Promise<CursorUpdatesResponse> {
+  const res = await fetch(`/api/tickets/updates?since=${encodeURIComponent(since)}`);
+  if (!res.ok) {
+    throw new ApiError(`Polling error (${res.status})`, res.status);
+  }
+  return res.json();
+}
+
+/**
+ * Re-runs the (fake) AI triage for a ticket. Sends the triage API key via the
+ * `x-triage-api-key` header, read from NEXT_PUBLIC_TRIAGE_API_KEY. This value is
+ * browser-exposed — intentional per the assignment; documented in FEAT-004.
+ */
+export async function retriageTicketApi(
+  id: string
+): Promise<{ success: boolean; ticket: Ticket }> {
+  const res = await fetch(`/api/tickets/${encodeURIComponent(id)}/retriage`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-triage-api-key': process.env.NEXT_PUBLIC_TRIAGE_API_KEY ?? '',
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new ApiError(data.error || 'Retriage failed', res.status, data);
+  }
+
+  return data;
+}

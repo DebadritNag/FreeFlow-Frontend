@@ -19,6 +19,7 @@ import {
   sanitizePlainText,
 } from '@/src/lib/ticket-rules';
 import { DEFAULT_AGENTS } from '@/src/store/ticketsSlice';
+import type { FakeTriageResult } from '@/src/server/triage-ai';
 
 // Global singleton to persist across Next.js dev server hot-reloads
 declare global {
@@ -102,9 +103,14 @@ export class MockDatabase {
   private updatesLog: { ticket: Ticket; timestamp: number }[] = [];
   private currentCursor: number = 0;
   private initialized: boolean = false;
+  // Wall-clock anchor for elapsed-time background mutations. Decoupled from
+  // poll cadence: mutations are driven by how much real time has passed, not by
+  // how often the updates endpoint is polled.
+  private lastMutationAt: number = Date.now();
 
   constructor() {
     this.seedDatabase();
+    this.lastMutationAt = Date.now();
   }
 
   private seedDatabase() {
@@ -832,6 +838,44 @@ export class MockDatabase {
     return { success: true, ticket };
   }
 
+  /**
+   * Applies a (fake) AI triage result to a ticket. Looks up by id (404-style
+   * {success:false} when missing), records the AI-suggested fields, keeps the
+   * enterprise priority floor, respects the status machine (no status change
+   * here), bumps version/updatedAt and records an update. `aiPriority` is only
+   * set when the AI's priority differs from the ticket's final priority.
+   */
+  public applyRetriage(
+    id: string,
+    ai: FakeTriageResult
+  ): { success: boolean; ticket?: Ticket; error?: string } {
+    const ticket = this.getTicketById(id);
+    if (!ticket) {
+      return { success: false, error: 'Ticket not found' };
+    }
+
+    // Enterprise priority floor: never let the AI drop an enterprise ticket
+    // below P1, even if the model suggested a lower priority.
+    let aiPriority = ai.priority;
+    if (ticket.customer.tier === 'enterprise' && (aiPriority === 'P2' || aiPriority === 'P3')) {
+      aiPriority = 'P1';
+    }
+
+    ticket.summary = sanitizePlainText(ai.summary);
+    ticket.reviewReason = sanitizePlainText(ai.reason);
+    ticket.aiSuggestedPriority = aiPriority;
+    ticket.aiSuggestedCategory = ai.category;
+    ticket.aiConfidence = ai.confidence;
+    // Only surface aiPriority when it diverges from the current final priority.
+    ticket.aiPriority = aiPriority !== ticket.priority ? aiPriority : null;
+
+    ticket.updatedAt = new Date().toISOString();
+    ticket.version += 1;
+    this.recordUpdate(ticket);
+
+    return { success: true, ticket };
+  }
+
   private recordUpdate(ticket: Ticket) {
     this.currentCursor += 1;
     this.updatesLog.push({ ticket: { ...ticket }, timestamp: Date.now() });
@@ -845,8 +889,8 @@ export class MockDatabase {
     const cursorNum = parseInt(cursorStr, 10);
     const validCursor = isNaN(cursorNum) ? 0 : cursorNum;
 
-    // In background, occasionally simulate a new incoming ticket or background update
-    this.simulateBackgroundActivity();
+    // Drive background mutations by elapsed wall-clock time, not by poll cadence.
+    this.runElapsedMutations();
 
     // Collect updates that happened after cursorNum
     const sliceCount = Math.max(0, this.currentCursor - validCursor);
@@ -863,42 +907,142 @@ export class MockDatabase {
     };
   }
 
-  private simulateBackgroundActivity() {
-    // 20% chance on polling to inject a new realistic ticket
-    if (Math.random() < 0.25) {
-      const nextId = `FF-${1000 + this.tickets.length + 1}`;
-      const newTicket: Ticket = {
-        id: nextId,
-        subject: `Live Ingestion Alert: Cluster #${Math.floor(Math.random() * 80) + 1} Threshold Reached`,
-        description: 'Automated monitoring detected request queue spike beyond standard baseline. Requires quick investigation.',
-        customer: {
-          id: `cust-live-${Date.now()}`,
-          name: 'Real-time System Monitor',
-          email: 'telemetry-alert@freeflow.internal',
-          tier: 'business',
-          company: 'HyperScale Logic',
-          avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Realtime%20Alert',
-        },
-        status: 'open',
-        priority: 'P1',
-        category: 'technical',
-        assignee: null,
-        triageDecision: 'automated',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        slaTargetMinutes: getSlaTargetMinutes('P1'),
-        slaDeadline: calculateSlaDeadline(new Date().toISOString(), 'P1'),
-        version: 1,
-        externalId: nextId,
-        summary: null,
-        aiPriority: null,
-        reviewReason: null,
-        anomalies: [],
-      };
+  /**
+   * Timestamp-based variant of getUpdatesSince. Accepts an ISO string and
+   * returns every ticket from the updates log whose update timestamp is
+   * strictly after `since` (deduped by id, newest state wins). Also drives the
+   * elapsed-time background mutations so new activity surfaces here too.
+   */
+  public getUpdatesSinceTimestamp(
+    sinceIso: string
+  ): { updatedTickets: Ticket[]; newCursor: string; timestamp: string } {
+    const parsed = Date.parse(sinceIso);
+    const sinceMs = isNaN(parsed) ? 0 : parsed;
 
-      this.tickets.unshift(newTicket);
-      this.recordUpdate(newTicket);
+    // Drive background mutations by elapsed wall-clock time, not by poll cadence.
+    this.runElapsedMutations();
+
+    const uniqueMap = new Map<string, Ticket>();
+    for (const entry of this.updatesLog) {
+      const entryMs = entry.timestamp || Date.parse(entry.ticket.updatedAt);
+      if (!isNaN(entryMs) && entryMs > sinceMs) {
+        uniqueMap.set(entry.ticket.id, entry.ticket);
+      }
     }
+
+    return {
+      updatedTickets: Array.from(uniqueMap.values()),
+      newCursor: String(this.currentCursor),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Elapsed-time background mutation generator. Computes how many fixed ~7s
+   * windows have passed since `lastMutationAt` (wall-clock, decoupled from poll
+   * cadence) and performs exactly ONE mutation per elapsed window — bounded to a
+   * handful per call so a long idle gap cannot flood the log. Each mutation is
+   * one of: create a new ticket, have another roster agent claim an unassigned
+   * ticket, or move an in_progress ticket to resolved. Advances lastMutationAt.
+   */
+  private runElapsedMutations() {
+    const WINDOW_MS = 7000; // fixed 7s window (within the required 5-10s band)
+    const MAX_PER_CALL = 5;
+
+    const now = Date.now();
+    const elapsed = now - this.lastMutationAt;
+    if (elapsed < WINDOW_MS) return;
+
+    const windows = Math.min(MAX_PER_CALL, Math.floor(elapsed / WINDOW_MS));
+
+    for (let w = 0; w < windows; w++) {
+      const choice = Math.floor(Math.random() * 3);
+      if (choice === 0) {
+        this.backgroundCreateTicket();
+      } else if (choice === 1) {
+        if (!this.backgroundClaimUnassigned()) {
+          this.backgroundCreateTicket();
+        }
+      } else {
+        if (!this.backgroundResolveInProgress()) {
+          this.backgroundCreateTicket();
+        }
+      }
+    }
+
+    // Advance the anchor by the consumed windows (not to `now`) so leftover
+    // elapsed time still counts toward the next window.
+    this.lastMutationAt += windows * WINDOW_MS;
+  }
+
+  private backgroundCreateTicket() {
+    const nextId = `FF-${1000 + this.tickets.length + 1}`;
+    const newTicket: Ticket = {
+      id: nextId,
+      subject: `Live Ingestion Alert: Cluster #${Math.floor(Math.random() * 80) + 1} Threshold Reached`,
+      description: 'Automated monitoring detected request queue spike beyond standard baseline. Requires quick investigation.',
+      customer: {
+        id: `cust-live-${Date.now()}`,
+        name: 'Real-time System Monitor',
+        email: 'telemetry-alert@freeflow.internal',
+        tier: 'business',
+        company: 'HyperScale Logic',
+        avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Realtime%20Alert',
+      },
+      status: 'open',
+      priority: 'P1',
+      category: 'technical',
+      assignee: null,
+      triageDecision: 'automated',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      slaTargetMinutes: getSlaTargetMinutes('P1'),
+      slaDeadline: calculateSlaDeadline(new Date().toISOString(), 'P1'),
+      version: 1,
+      externalId: nextId,
+      summary: null,
+      aiPriority: null,
+      reviewReason: null,
+      anomalies: [],
+    };
+
+    this.tickets.unshift(newTicket);
+    this.recordUpdate(newTicket);
+  }
+
+  private backgroundClaimUnassigned(): boolean {
+    const candidates = this.tickets.filter((t) => t.status === 'open' && t.assignee === null);
+    if (candidates.length === 0) return false;
+
+    const ticket = candidates[Math.floor(Math.random() * candidates.length)];
+    const agent = DEFAULT_AGENTS[Math.floor(Math.random() * DEFAULT_AGENTS.length)];
+
+    ticket.assignee = agent;
+    ticket.status = 'in_progress';
+    ticket.updatedAt = new Date().toISOString();
+    ticket.version += 1;
+    this.recordUpdate(ticket);
+    return true;
+  }
+
+  private backgroundResolveInProgress(): boolean {
+    const candidates = this.tickets.filter((t) => t.status === 'in_progress');
+    if (candidates.length === 0) return false;
+
+    const ticket = candidates[Math.floor(Math.random() * candidates.length)];
+    ticket.status = 'resolved';
+    ticket.updatedAt = new Date().toISOString();
+    ticket.version += 1;
+    this.recordUpdate(ticket);
+    return true;
+  }
+
+  /**
+   * Test seam: lets tests backdate the mutation anchor to deterministically
+   * trigger (or suppress) elapsed-time background mutations.
+   */
+  public setLastMutationAtForTest(ms: number) {
+    this.lastMutationAt = ms;
   }
 }
 

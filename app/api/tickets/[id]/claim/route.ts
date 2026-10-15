@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMockDb } from '@/src/server/mock-db';
 import { simulateNetworkConditions } from '@/src/server/api-helpers';
+import { DEFAULT_AGENTS } from '@/src/store/ticketsSlice';
 
 export async function POST(
   req: NextRequest,
@@ -23,9 +24,19 @@ export async function POST(
     return NextResponse.json({ error: 'Valid agent payload is required to claim a ticket.' }, { status: 400 });
   }
 
+  // Do not trust the client: validate the claiming agent against the roster.
+  const isKnownAgent = DEFAULT_AGENTS.some((a) => a.id === claimingAgent.id);
+  if (!isKnownAgent) {
+    return NextResponse.json(
+      { error: `Unknown agent '${claimingAgent.id}' is not part of the roster.`, code: 'UNKNOWN_AGENT' },
+      { status: 400 }
+    );
+  }
+
   const db = getMockDb();
-  // When simulateConflict is explicitly requested, guarantee a 409 collision; otherwise 0 so normal claims succeed cleanly
-  const conflictRate = simulateConflict ? 1.0 : (body.simulateConflictRate ?? 0);
+  // Busy-server realism: normal claims collide ~1 in 4 (0.25); the manual
+  // Simulate button forces a guaranteed 409 (1.0).
+  const conflictRate = simulateConflict ? 1.0 : 0.25;
   const result = db.claimTicket(id, claimingAgent, conflictRate, force);
 
   if (!result.success) {
