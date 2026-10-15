@@ -7,7 +7,6 @@ import { useAppSelector } from '@/src/store/hooks';
 import {
   LayoutDashboard,
   Headset,
-  ChartNoAxesColumn,
   ChevronRight,
   Menu,
   X,
@@ -84,11 +83,6 @@ export default function Sidebar() {
             <span>Support Operations</span>
           </Link>
 
-          {/* Reports - inert, no route */}
-          <button type="button" aria-disabled="true" className={inertItemClass}>
-            <ChartNoAxesColumn className="w-[18px] h-[18px]" />
-            <span>Reports</span>
-          </button>
         </nav>
 
         {/* Bottom promo card — bg-customer.png background */}
@@ -137,10 +131,10 @@ export default function Sidebar() {
           </div>
           <div className="flex flex-col min-w-0 flex-1 leading-tight">
             <span className="text-[13px] font-semibold text-foreground truncate">
-              Sarah Chen
+              {activeAgent.name}
             </span>
             <span className="text-[11px] text-text-secondary truncate">
-              Senior Support Specialist
+              {activeAgent.role}
             </span>
           </div>
           <ChevronRight className="w-4 h-4 text-text-secondary flex-shrink-0" />
